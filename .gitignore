@@ -3,3 +3,4 @@ dist/
 .env
 .DS_Store
 backdate_commit.sh
+precommit.sh

@@ -1,6 +1,7 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import database from './config/database';
 
 dotenv.config();
 
@@ -12,8 +13,13 @@ class App {
     this.app = express();
     this.port = port;
 
+    this.connectDatabase();
     this.initializeMiddlewares();
     this.initializeRoutes();
+  }
+
+  private async connectDatabase(): Promise<void> {
+    await database.connect();
   }
 
   private initializeMiddlewares(): void {
