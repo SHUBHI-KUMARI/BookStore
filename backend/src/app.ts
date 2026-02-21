@@ -2,6 +2,9 @@ import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import database from './config/database';
+import authRoutes from './routes/AuthRoutes';
+import bookRoutes from './routes/BookRoutes';
+import cartRoutes from './routes/CartRoutes';
 
 dotenv.config();
 
@@ -33,6 +36,11 @@ class App {
     this.app.get('/api/health', (req: Request, res: Response) => {
       res.status(200).json({ status: 'UP', message: 'API is healthy' });
     });
+
+    // Integrated Route Modules
+    this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/books', bookRoutes);
+    this.app.use('/api/cart', cartRoutes);
   }
 
   public listen(): void {
