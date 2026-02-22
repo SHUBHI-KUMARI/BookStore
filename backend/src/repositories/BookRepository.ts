@@ -25,4 +25,17 @@ export class BookRepository {
       data: { stock: { increment: quantity } },
     });
   }
+  public async findPendingResale() {
+    return database.prisma.book.findMany({
+      where: { isUsed: true, approvalStatus: 'PENDING' },
+      include: { category: true, seller: true },
+    });
+  }
+
+  public async updateApprovalStatus(id: string, status: any) {
+    return database.prisma.book.update({
+      where: { id },
+      data: { approvalStatus: status },
+    });
+  }
 }
