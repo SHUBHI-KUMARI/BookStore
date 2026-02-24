@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { CartController } from '../controllers/CartController';
+import { authenticateJWT } from '../middlewares/authMiddleware';
 
 class CartRoutes {
   public router: Router;
@@ -12,8 +13,10 @@ class CartRoutes {
   }
 
   private initializeRoutes() {
-    this.router.get('/', this.cartController.getCart);
-    this.router.post('/', this.cartController.addToCart);
+    this.router.get('/', authenticateJWT, this.cartController.getCart);
+    this.router.post('/', authenticateJWT, this.cartController.addToCart);
+    this.router.put('/items/:bookId', authenticateJWT, this.cartController.updateCartItem);
+    this.router.delete('/items/:bookId', authenticateJWT, this.cartController.removeCartItem);
   }
 }
 

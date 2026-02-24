@@ -26,6 +26,33 @@ export class CartRepository {
     });
   }
 
+  public async updateItemQuantity(cartId: string, bookId: string, quantity: number) {
+    if (quantity <= 0) {
+      return this.removeItem(cartId, bookId);
+    }
+
+    return database.prisma.cartItem.update({
+      where: {
+        cartId_bookId: {
+          cartId,
+          bookId,
+        },
+      },
+      data: { quantity },
+    });
+  }
+
+  public async removeItem(cartId: string, bookId: string) {
+    return database.prisma.cartItem.delete({
+      where: {
+        cartId_bookId: {
+          cartId,
+          bookId,
+        },
+      },
+    });
+  }
+
   public async clearCart(cartId: string) {
     return database.prisma.cartItem.deleteMany({
       where: { cartId },
