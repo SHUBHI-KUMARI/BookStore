@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, BookCondition } from '@prisma/client';
 
 export class BookFactory {
   /**
@@ -32,7 +32,7 @@ export class BookFactory {
       price: Number(data.price),
       stock: 1, // Used books typically have stock 1 per listing
       isUsed: true,
-      condition: (data.condition as any) || 'GOOD',
+      condition: (data.condition as BookCondition) || 'GOOD',
       approvalStatus: 'PENDING',
       seller: {
         connect: { id: sellerId },

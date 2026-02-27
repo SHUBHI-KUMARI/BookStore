@@ -5,6 +5,9 @@ import database from './config/database';
 import authRoutes from './routes/AuthRoutes';
 import bookRoutes from './routes/BookRoutes';
 import cartRoutes from './routes/CartRoutes';
+import categoryRoutes from './routes/CategoryRoutes';
+import orderRoutes from './routes/OrderRoutes';
+import reviewRoutes from './routes/ReviewRoutes';
 
 dotenv.config();
 
@@ -39,8 +42,11 @@ class App {
 
     // Integrated Route Modules
     this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/categories', categoryRoutes);
     this.app.use('/api/books', bookRoutes);
     this.app.use('/api/cart', cartRoutes);
+    this.app.use('/api/orders', orderRoutes);
+    this.app.use('/api/reviews', reviewRoutes);
   }
 
   public listen(): void {

@@ -1,5 +1,6 @@
 import { BookRepository } from '../repositories/BookRepository';
 import { BookFactory } from '../utils/BookFactory';
+import { BookCondition, ApprovalStatus } from '@prisma/client';
 
 export class BookService {
   private bookRepository: BookRepository;
@@ -8,12 +9,30 @@ export class BookService {
     this.bookRepository = new BookRepository();
   }
 
-  public async getAllBooks() {
-    return this.bookRepository.findAll();
+  public async getAllBooks(filters?: {
+    query?: string;
+    categoryId?: string;
+    condition?: BookCondition;
+    isUsed?: boolean;
+  }) {
+    return this.bookRepository.findAll(filters);
   }
 
   public async getBookById(id: string) {
-    return this.bookRepository.findById(id);
+    const book = await this.bookRepository.findById(id);
+    if (!book) return null;
+
+    // Average rating
+    let averageRating = 0;
+    if (book.reviews && book.reviews.length > 0) {
+      const sum = book.reviews.reduce((acc, curr) => acc + curr.rating, 0);
+      averageRating = Number((sum / book.reviews.length).toFixed(1));
+    }
+
+    return {
+      ...book,
+      averageRating,
+    };
   }
 
   public async getPendingResaleBooks() {
@@ -31,7 +50,7 @@ export class BookService {
     return this.bookRepository.create(payload);
   }
 
-  public async updateResaleStatus(bookId: string, status: string) {
+  public async updateResaleStatus(bookId: string, status: ApprovalStatus) {
     return this.bookRepository.updateApprovalStatus(bookId, status);
   }
 }

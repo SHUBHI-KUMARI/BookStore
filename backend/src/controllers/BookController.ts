@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware';
+import { BookCondition } from '@prisma/client';
 import { BookService } from '../services/BookService';
 
 export class BookController {
@@ -9,9 +10,16 @@ export class BookController {
     this.bookService = new BookService();
   }
 
-  public getAll = async (_req: AuthRequest, res: Response): Promise<void> => {
+  public getAll = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const books = await this.bookService.getAllBooks();
+      const filters = {
+        query: req.query.q as string,
+        categoryId: req.query.category as string,
+        condition: req.query.condition as unknown as BookCondition,
+        isUsed: req.query.isUsed ? req.query.isUsed === 'true' : undefined,
+      };
+
+      const books = await this.bookService.getAllBooks(filters);
       res.status(200).json(books);
     } catch (error) {
       res.status(500).json({ message: 'Error fetching books', error: (error as Error).message });
@@ -20,7 +28,7 @@ export class BookController {
 
   public getById = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const book = await this.bookService.getBookById(req.params.id);
+      const book = await this.bookService.getBookById(req.params.id as string);
       if (!book) {
         res.status(404).json({ message: 'Book not found' });
         return;
@@ -49,7 +57,7 @@ export class BookController {
     }
   };
 
-  public getPendingUsedBooks = async (_req: AuthRequest, res: Response): Promise<void> => {
+  public getPendingUsedBooks = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const books = await this.bookService.getPendingResaleBooks();
       res.status(200).json(books);
@@ -63,7 +71,7 @@ export class BookController {
   public approveUsedBook = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { status } = req.body; // e.g. "APPROVED" or "REJECTED"
-      const book = await this.bookService.updateResaleStatus(req.params.id, status);
+      const book = await this.bookService.updateResaleStatus(req.params.id as string, status);
       res.status(200).json({ message: `Book marked as ${status}`, book });
     } catch (error) {
       res

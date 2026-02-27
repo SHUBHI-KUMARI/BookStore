@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { UserRepository } from '../repositories/UserRepository';
+import { Role } from '@prisma/client';
 
 export class AuthService {
   private userRepository: UserRepository;
@@ -12,7 +13,11 @@ export class AuthService {
   /**
    * Registers a new user and hashes their password
    */
-  public async register(data: Record<string, string | undefined>) {
+  public async register(data: Record<string, string>) {
+    if (!data.email || !data.password || !data.name) {
+      throw new Error('Missing required fields');
+    }
+
     const existingUser = await this.userRepository.findByEmail(data.email);
     if (existingUser) {
       throw new Error('User already exists');
@@ -20,11 +25,13 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
+    const roleVal = data.role ? (data.role as Role) : 'CUSTOMER';
+
     const newUser = await this.userRepository.create({
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      role: data.role || 'CUSTOMER',
+      role: roleVal,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
