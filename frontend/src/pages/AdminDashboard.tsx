@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
+import { useAuth } from "../hooks/useAuth";
 
 const STATS = [
   { title: "Total Sales", value: "$12,450", percent: "+14%", icon: BarChart3 },
@@ -63,6 +64,7 @@ const PENDING_LISTINGS = [
 
 export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const { user, logout } = useAuth();
 
   const MENU = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -107,11 +109,18 @@ export const AdminDashboard = () => {
               A
             </div>
             <div>
-              <p className="font-medium line-clamp-1">Admin User</p>
-              <p className="text-gray-400 text-xs">Superadmin</p>
+              <p className="font-medium line-clamp-1">
+                {user?.name || "Admin User"}
+              </p>
+              <p className="text-gray-400 text-xs">
+                {user?.role || "Superadmin"}
+              </p>
             </div>
           </div>
-          <button className="w-full py-2 flex items-center justify-center gap-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
+          <button
+            onClick={logout}
+            className="w-full py-2 flex items-center justify-center gap-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+          >
             <LogOut className="w-4 h-4" /> Logout
           </button>
         </div>

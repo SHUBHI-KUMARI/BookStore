@@ -12,13 +12,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
+import { useAuth } from "../hooks/useAuth";
 
 // Mock Data
-const USER = {
-  name: "Sarah Jenkins",
-  email: "sarah.j@example.com",
-  joinDate: "March 2024",
-};
 const ORDERS = [
   {
     id: "ORD-7281",
@@ -63,6 +59,7 @@ const REVIEWS = [
 
 export const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState("profile");
+  const { user, logout } = useAuth();
 
   const TABS = [
     { id: "profile", label: "Profile Overview", icon: User },
@@ -79,14 +76,14 @@ export const UserDashboard = () => {
         <div className="p-6 md:p-8">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 bg-[var(--color-brand-muted-orange)]/10 rounded-full flex items-center justify-center text-[var(--color-brand-muted-orange)] font-bold text-xl">
-              {USER.name.charAt(0)}
+              {(user?.name || "User").charAt(0)}
             </div>
             <div>
               <h2 className="font-bold text-[var(--color-brand-dark-blue)] line-clamp-1">
-                {USER.name}
+                {user?.name || "User"}
               </h2>
               <span className="text-xs text-gray-500">
-                Member since {USER.joinDate}
+                Member since {"Recent"}
               </span>
             </div>
           </div>
@@ -111,7 +108,10 @@ export const UserDashboard = () => {
           </nav>
 
           <div className="mt-12 pt-6 border-t border-gray-100">
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors">
+            <button
+              onClick={logout}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+            >
               <LogOut className="w-5 h-5" />
               Sign Out
             </button>
@@ -184,7 +184,7 @@ export const UserDashboard = () => {
                     Full Name
                   </label>
                   <p className="font-medium text-[var(--color-brand-dark-blue)] mt-1">
-                    {USER.name}
+                    {user?.name || "User"}
                   </p>
                 </div>
                 <div>
@@ -192,7 +192,7 @@ export const UserDashboard = () => {
                     Email Address
                   </label>
                   <p className="font-medium text-[var(--color-brand-dark-blue)] mt-1">
-                    {USER.email}
+                    {user?.email || ""}
                   </p>
                 </div>
                 <div>
