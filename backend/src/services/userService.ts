@@ -1,28 +1,26 @@
-import api from './api';
+import { UserRepository } from '../repositories/UserRepository';
+import { Prisma } from '@prisma/client';
 
-export const userService = {
-  async getUserDetails() {
-    const res = await api.get('/user');
-    return res.data;
-  },
-  async updateUserDetails(data: { name: string; email: string }) {
-    const res = await api.put('/user', data);
-    return res.data;
-  },
-  async getUserListings() {
-    const res = await api.get('/user/listings');
-    return res.data;
-  },
-  async getUserReviews() {
-    const res = await api.get('/user/reviews');
-    return res.data;
-  },
-  async getUserSaved() {
-    const res = await api.get('/user/saved');
-    return res.data;
-  },
-  async getUserOrders() {
-    const res = await api.get('/orders');
-    return res.data;
-  },
-};
+/**
+ * Backend UserService — wraps UserRepository with business logic.
+ * (Not to be confused with the frontend userService in frontend/src/services/userService.ts)
+ */
+export class UserService {
+  private userRepository: UserRepository;
+
+  constructor() {
+    this.userRepository = new UserRepository();
+  }
+
+  public async getUserById(id: string) {
+    const user = await this.userRepository.findById(id);
+    if (!user) throw new Error('User not found');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...safe } = user;
+    return safe;
+  }
+
+  public async updateUser(id: string, data: Prisma.UserUpdateInput) {
+    return this.userRepository.update(id, data);
+  }
+}

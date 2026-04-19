@@ -9,9 +9,11 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { useAuth } from "../../hooks/useAuth";
+import { useCart } from "../../hooks/useCart";
 
 export const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const { itemCount } = useCart();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -67,9 +69,11 @@ export const Navbar = () => {
               className="relative group p-2 hover:bg-black/5 rounded-full transition-colors"
             >
               <ShoppingCart className="h-5 w-5 text-[var(--color-brand-dark-blue)]" />
-              <span className="absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 rounded-full bg-[var(--color-brand-muted-orange)] text-xs font-bold text-white shadow">
-                2
-              </span>
+              {itemCount > 0 && (
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 rounded-full bg-[var(--color-brand-muted-orange)] text-xs font-bold text-white shadow">
+                  {itemCount}
+                </span>
+              )}
             </Link>
 
             {isAuthenticated ? (
@@ -107,6 +111,11 @@ export const Navbar = () => {
           <div className="flex md:hidden items-center gap-4">
             <Link to="/cart" className="relative p-2">
               <ShoppingCart className="h-5 w-5 text-[var(--color-brand-dark-blue)]" />
+              {itemCount > 0 && (
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 rounded-full bg-[var(--color-brand-muted-orange)] text-xs font-bold text-white shadow">
+                  {itemCount}
+                </span>
+              )}
             </Link>
             <button className="text-gray-500 hover:text-[var(--color-brand-dark-blue)] p-2">
               <Menu className="h-6 w-6" />

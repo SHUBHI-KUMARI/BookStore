@@ -6,63 +6,50 @@ import {
   ArrowRight,
   Tag,
   ShoppingBag,
+  Loader2,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { useCart } from "../hooks/useCart";
 
-// --- MOCK DATA ---
-const INITIAL_CART = [
-  {
-    id: "c1",
-    bookId: "b1",
-    title: "The Midnight Library",
-    author: "Matt Haig",
-    price: 18.99,
-    coverUrl:
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600",
-    condition: "NEW" as const,
-    quantity: 1,
-  },
-  {
-    id: "c2",
-    bookId: "u2",
-    title: "Project Hail Mary",
-    author: "Andy Weir",
-    price: 11.2,
-    coverUrl:
-      "https://images.unsplash.com/photo-1614544048536-0d28caf77f41?auto=format&fit=crop&q=80&w=600",
-    condition: "USED" as const,
-    conditionDetail: "Mint",
-    quantity: 1,
-  },
+const PLACEHOLDER_COVERS = [
+  "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600",
+  "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600",
+  "https://images.unsplash.com/photo-1614544048536-0d28caf77f41?auto=format&fit=crop&q=80&w=600",
+  "https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&q=80&w=600",
 ];
 
 export const Cart = () => {
-  const [cartItems, setCartItems] = useState(INITIAL_CART);
+  const { cart, isLoading, updateQuantity, removeFromCart, itemCount } = useCart();
   const [couponCode, setCouponCode] = useState("");
   const navigate = useNavigate();
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCartItems((items) =>
-      items.map((item) => {
-        if (item.id === id) {
-          const newQuantity = Math.max(1, item.quantity + delta);
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      }),
-    );
+  const cartItems = cart?.items.map((item) => ({
+    id: item.id,
+    bookId: item.book.id,
+    title: item.book.title,
+    author: item.book.author,
+    price: item.book.price,
+    coverUrl: PLACEHOLDER_COVERS[item.book.title.charCodeAt(0) % PLACEHOLDER_COVERS.length],
+    condition: item.book.condition,
+    isUsed: item.book.isUsed,
+    quantity: item.quantity,
+  })) ?? [];
+
+  const handleUpdateQuantity = async (bookId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    await updateQuantity(bookId, newQuantity);
   };
 
-  const removeItem = (id: string) => {
-    setCartItems((items) => items.filter((item) => item.id !== id));
+  const handleRemoveItem = async (bookId: string) => {
+    await removeFromCart(bookId);
   };
 
   const subtotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0,
   );
-  const delivery = subtotal > 50 ? 0 : 5.99; // Free delivery over $50
+  const delivery = subtotal > 50 ? 0 : 5.99;
   const isCartEmpty = cartItems.length === 0;
 
   return (
@@ -75,7 +62,7 @@ export const Cart = () => {
           </h1>
           <p className="text-[var(--color-brand-brown)] mt-2">
             {!isCartEmpty
-              ? `You have ${cartItems.length} items in your cart.`
+              ? `You have ${itemCount} item${itemCount !== 1 ? 's' : ''} in your cart.`
               : "Your cart is currently empty."}
           </p>
         </div>
@@ -143,15 +130,12 @@ export const Cart = () => {
                     <div className="mb-6 flex justify-center sm:justify-start">
                       <span
                         className={`px-2.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider ${
-                          item.condition === "NEW"
-                            ? "bg-[var(--color-brand-muted-orange)]/10 text-[var(--color-brand-muted-orange)]"
-                            : "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]"
+                          item.isUsed
+                            ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]"
+                            : "bg-[var(--color-brand-muted-orange)]/10 text-[var(--color-brand-muted-orange)]"
                         }`}
                       >
-                        {item.condition}{" "}
-                        {item.conditionDetail
-                          ? `• ${item.conditionDetail}`
-                          : ""}
+                        {item.isUsed ? `Pre-owned • ${item.condition}` : item.condition}
                       </span>
                     </div>
 
@@ -159,9 +143,10 @@ export const Cart = () => {
                     <div className="flex items-center justify-between w-full mt-auto pt-4 border-t border-gray-50">
                       <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50">
                         <button
-                          onClick={() => updateQuantity(item.id, -1)}
+                          onClick={() => handleUpdateQuantity(item.bookId, item.quantity - 1)}
                           className="p-2 text-gray-500 hover:text-[var(--color-brand-dark-blue)] hover:bg-gray-100 rounded-l-lg transition-colors"
                           aria-label="Decrease quantity"
+                          disabled={isLoading}
                         >
                           <Minus className="w-4 h-4" />
                         </button>
@@ -169,16 +154,18 @@ export const Cart = () => {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.id, 1)}
+                          onClick={() => handleUpdateQuantity(item.bookId, item.quantity + 1)}
                           className="p-2 text-gray-500 hover:text-[var(--color-brand-dark-blue)] hover:bg-gray-100 rounded-r-lg transition-colors"
                           aria-label="Increase quantity"
+                          disabled={isLoading}
                         >
                           <Plus className="w-4 h-4" />
                         </button>
                       </div>
 
                       <button
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => handleRemoveItem(item.bookId)}
+                        disabled={isLoading}
                         className="text-gray-400 hover:text-red-500 flex items-center gap-1.5 text-sm font-medium transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -200,8 +187,7 @@ export const Cart = () => {
                 <div className="space-y-4 mb-6 text-sm">
                   <div className="flex justify-between text-gray-600">
                     <span>
-                      Subtotal ({cartItems.reduce((a, b) => a + b.quantity, 0)}{" "}
-                      items)
+                      Subtotal ({itemCount} item{itemCount !== 1 ? 's' : ''})
                     </span>
                     <span className="font-medium text-[var(--color-brand-dark-blue)]">
                       ${subtotal.toFixed(2)}
@@ -256,9 +242,19 @@ export const Cart = () => {
                   size="lg"
                   className="w-full group"
                   onClick={() => navigate("/checkout")}
+                  disabled={isLoading || isCartEmpty}
                 >
-                  Proceed to Checkout
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Proceed to Checkout
+                      <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
                 </Button>
 
                 <div className="mt-6 text-center text-xs text-gray-500">

@@ -3,6 +3,9 @@ import { AuthRequest } from '../middlewares/authMiddleware';
 import { OrderService } from '../services/OrderService';
 import { OrderStatus } from '@prisma/client';
 import { CreditCardPayment } from '../services/payments/CreditCardPayment';
+import { UpiPayment } from '../services/payments/UpiPayment';
+import { WalletPayment } from '../services/payments/WalletPayment';
+import { PaymentStrategy } from '../interfaces/PaymentStrategy';
 
 export class OrderController {
   private orderService: OrderService;
@@ -52,12 +55,41 @@ export class OrderController {
     }
   };
 
+  /**
+   * Process payment for a specific order.
+   * Accepts `method` field to select payment strategy: CREDIT_CARD | UPI | WALLET
+   */
   public processPayment = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { orderId } = req.params;
-      const { cardNumber, expiryDate, cvv } = req.body;
+      const { method, cardNumber, expiryDate, cvv, upiId, walletId } = req.body;
 
-      const strategy = new CreditCardPayment(cardNumber, expiryDate, cvv);
+      let strategy: PaymentStrategy;
+
+      switch ((method as string)?.toUpperCase()) {
+        case 'UPI':
+          if (!upiId) {
+            res.status(400).json({ message: 'UPI ID is required for UPI payment' });
+            return;
+          }
+          strategy = new UpiPayment(upiId);
+          break;
+        case 'WALLET':
+          if (!walletId) {
+            res.status(400).json({ message: 'Wallet ID is required for wallet payment' });
+            return;
+          }
+          strategy = new WalletPayment(walletId);
+          break;
+        case 'CREDIT_CARD':
+        default:
+          if (!cardNumber || !expiryDate || !cvv) {
+            res.status(400).json({ message: 'Card details are required for credit card payment' });
+            return;
+          }
+          strategy = new CreditCardPayment(cardNumber, expiryDate, cvv);
+          break;
+      }
 
       const success = await this.orderService.processPayment(orderId as string, strategy);
       if (success) {
@@ -75,7 +107,6 @@ export class OrderController {
       const { orderId } = req.params;
       const { status } = req.body;
 
-      // We assume only Admin can reach here due to route middleware
       const updatedOrder = await this.orderService.updateOrderStatus(
         orderId as string,
         status as OrderStatus,

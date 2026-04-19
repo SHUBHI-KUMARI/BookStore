@@ -7,36 +7,69 @@ import {
   CheckCircle2,
   ShieldCheck,
   ChevronLeft,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { Button } from "../components/ui/Button";
-
-// Mock summary data to keep it self-contained
-const ORDER_SUMMARY = {
-  subtotal: 30.19,
-  delivery: 5.99,
-  total: 36.18,
-  items: [
-    { title: "The Midnight Library", qty: 1, price: 18.99 },
-    { title: "Project Hail Mary", qty: 1, price: 11.2 },
-  ],
-};
+import { useCart } from "../hooks/useCart";
+import { orderService, type PaymentData } from "../services/orderService";
 
 export const Checkout = () => {
+  const { cart, clearCartLocally } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("credit-card");
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [upiId, setUpiId] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const cartItems = cart?.items.map((item) => ({
+    id: item.id,
+    bookId: item.book.id,
+    title: item.book.title,
+    qty: item.quantity,
+    price: item.book.price,
+  })) ?? [];
+
+  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.qty, 0);
+  const delivery = subtotal > 50 ? 0 : 5.99;
+  const total = subtotal + delivery;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setIsSubmitting(true);
-    // Simulate API checkout
-    setTimeout(() => {
-      setIsSubmitting(false);
+
+    try {
+      // Create the order
+      const order = await orderService.createOrder();
+      setCreatedOrderId(order.id);
+
+      // Process payment
+      const paymentData: PaymentData = {
+        method: paymentMethod === "credit-card" ? "CREDIT_CARD" : "UPI",
+        cardNumber: paymentMethod === "credit-card" ? cardNumber : undefined,
+        expiryDate: paymentMethod === "credit-card" ? expiryDate : undefined,
+        cvv: paymentMethod === "credit-card" ? cvv : undefined,
+        upiId: paymentMethod === "upi" ? upiId : undefined,
+      };
+
+      await orderService.payOrder(order.id, paymentData);
+
+      clearCartLocally();
       setIsSuccess(true);
-    }, 2000);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? "Failed to process checkout. Please try again.";
+      setError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSuccess) {
@@ -50,11 +83,10 @@ export const Checkout = () => {
             Order Confirmed!
           </h2>
           <p className="text-[var(--color-brand-brown)] mb-2 font-medium">
-            Order #RB-948210
+            Order #{createdOrderId.slice(0, 8).toUpperCase()}
           </p>
           <p className="text-gray-500 mb-8">
-            Thank you for shopping with ReBook. We've sent a confirmation email
-            with your order details and tracking information.
+            Thank you for shopping with ReBook. Your order has been placed successfully.
           </p>
           <Link to="/books" className="w-full">
             <Button className="w-full">Continue Shopping</Button>
@@ -218,18 +250,16 @@ export const Checkout = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod("paypal")}
-                    className={`p-4 border rounded-xl flex flex-col items-center gap-2 transition-colors ${paymentMethod === "paypal" ? "border-[#003087] bg-[#003087]/5 ring-1 ring-[#003087]" : "border-gray-200 hover:bg-gray-50"}`}
+                    onClick={() => setPaymentMethod("upi")}
+                    className={`p-4 border rounded-xl flex flex-col items-center justify-center gap-2 transition-colors ${paymentMethod === "upi" ? "border-emerald-600 bg-emerald-600/5 ring-1 ring-emerald-600" : "border-gray-200 hover:bg-gray-50"}`}
                   >
-                    {/* Mock PayPal Icon Text */}
-                    <div className="font-black italic text-xl">
-                      <span className="text-[#003087]">Pay</span>
-                      <span className="text-[#009cde]">Pal</span>
-                    </div>
+                    <Wallet
+                      className={`w-6 h-6 ${paymentMethod === "upi" ? "text-emerald-600" : "text-gray-400"}`}
+                    />
                     <span
-                      className={`text-sm font-bold ${paymentMethod === "paypal" ? "text-[#003087]" : "text-gray-500"}`}
+                      className={`text-sm font-bold ${paymentMethod === "upi" ? "text-emerald-600" : "text-gray-500"}`}
                     >
-                      PayPal
+                      UPI
                     </span>
                   </button>
                 </div>
@@ -240,31 +270,40 @@ export const Checkout = () => {
                       label="Card Number"
                       placeholder="0000 0000 0000 0000"
                       required
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
                     />
                     <div className="grid grid-cols-2 gap-5">
                       <Input
                         label="Expiration Date"
                         placeholder="MM/YY"
                         required
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
                       />
                       <Input
                         label="Security Code (CVV)"
                         placeholder="123"
                         required
+                        value={cvv}
+                        onChange={(e) => setCvv(e.target.value)}
                       />
                     </div>
-                    <Input
-                      label="Name on Card"
-                      placeholder="John Doe"
-                      required
-                    />
                   </div>
                 )}
 
-                {paymentMethod === "paypal" && (
-                  <div className="p-6 bg-gray-50 border border-gray-100 rounded-xl text-center text-sm text-gray-600">
-                    You will be redirected to PayPal to complete your secure
-                    transaction.
+                {paymentMethod === "upi" && (
+                  <div className="p-5 bg-gray-50 border border-gray-100 rounded-xl space-y-5">
+                    <Input
+                      label="UPI ID"
+                      placeholder="username@bank"
+                      required
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                    />
+                    <div className="text-center text-sm text-gray-500 mt-2">
+                      Please enter your UPI ID. You will receive a payment request on your UPI app.
+                    </div>
                   </div>
                 )}
               </div>
@@ -280,36 +319,50 @@ export const Checkout = () => {
 
               {/* Items List Mini */}
               <div className="space-y-4 mb-6">
-                {ORDER_SUMMARY.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between gap-4 text-sm">
-                    <div className="flex gap-2">
-                      <span className="font-bold text-gray-400">
-                        {item.qty}x
-                      </span>
-                      <span className="text-[var(--color-brand-dark-blue)] font-medium line-clamp-1">
-                        {item.title}
+                {cartItems.length === 0 ? (
+                  <p className="text-gray-500 text-sm">Your cart is empty.</p>
+                ) : (
+                  cartItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between gap-4 text-sm">
+                      <div className="flex gap-2">
+                        <span className="font-bold text-gray-400">
+                          {item.qty}x
+                        </span>
+                        <span className="text-[var(--color-brand-dark-blue)] font-medium line-clamp-1">
+                          {item.title}
+                        </span>
+                      </div>
+                      <span className="text-[var(--color-brand-brown)]">
+                        ${(item.price * item.qty).toFixed(2)}
                       </span>
                     </div>
-                    <span className="text-[var(--color-brand-brown)]">
-                      ${(item.price * item.qty).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
 
               <hr className="border-dashed border-gray-200 my-6" />
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
 
               <div className="space-y-3 mb-6 text-sm">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
                   <span className="font-medium text-[var(--color-brand-dark-blue)]">
-                    ${ORDER_SUMMARY.subtotal.toFixed(2)}
+                    ${subtotal.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
                   <span className="font-medium text-[var(--color-brand-dark-blue)]">
-                    ${ORDER_SUMMARY.delivery.toFixed(2)}
+                    {delivery === 0 ? (
+                      <span className="text-emerald-600 font-bold">FREE</span>
+                    ) : (
+                      `$${delivery.toFixed(2)}`
+                    )}
                   </span>
                 </div>
 
@@ -320,7 +373,7 @@ export const Checkout = () => {
                     Total
                   </span>
                   <span className="font-black text-2xl text-[var(--color-brand-dark-blue)]">
-                    ${ORDER_SUMMARY.total.toFixed(2)}
+                    ${total.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -331,8 +384,16 @@ export const Checkout = () => {
                 size="lg"
                 className="w-full"
                 isLoading={isSubmitting}
+                disabled={cartItems.length === 0}
               >
-                {`Pay $${ORDER_SUMMARY.total.toFixed(2)}`}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  `Pay $${total.toFixed(2)}`
+                )}
               </Button>
             </div>
           </div>

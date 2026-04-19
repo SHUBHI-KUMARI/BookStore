@@ -1,7 +1,10 @@
-import { ShoppingCart, Star } from "lucide-react";
+import { ShoppingCart, Star, Loader2 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useCart } from "../../hooks/useCart";
+import { useAuth } from "../../hooks/useAuth";
+import { useState } from "react";
 
 interface BookCardProps {
   id: string;
@@ -24,6 +27,27 @@ export const BookCard = ({
   conditionDetail,
   rating,
 }: BookCardProps) => {
+  const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+    setIsAdding(true);
+    try {
+      await addToCart(id, 1);
+    } catch {
+      // ignore
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   return (
     <div className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full ring-1 ring-black/5">
       {/* Cover Image Container */}
@@ -99,8 +123,14 @@ export const BookCard = ({
             variant="primary"
             className="rounded-full px-5 shadow-sm hover:shadow-md"
             aria-label={`Add ${title} to cart`}
+            onClick={handleAddToCart}
+            disabled={isAdding}
           >
-            <ShoppingCart className="h-4 w-4 mr-2" />
+            {isAdding ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <ShoppingCart className="h-4 w-4 mr-2" />
+            )}
             Cart
           </Button>
         </div>

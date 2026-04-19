@@ -8,26 +8,33 @@ export class BookRepository {
     condition?: BookCondition;
     isUsed?: boolean;
   }) {
-    const where: Prisma.BookWhereInput = {};
+    // Build AND conditions so each filter is independently applied
+    const andConditions: Prisma.BookWhereInput[] = [];
+
+    // Visibility rule: only new books OR approved used books
+    andConditions.push({
+      OR: [{ isUsed: false }, { isUsed: true, approvalStatus: 'APPROVED' }],
+    });
+
     if (filters?.isUsed !== undefined) {
-      where.isUsed = filters.isUsed;
+      andConditions.push({ isUsed: filters.isUsed });
     }
     if (filters?.condition) {
-      where.condition = filters.condition;
+      andConditions.push({ condition: filters.condition });
     }
     if (filters?.categoryId) {
-      where.categoryId = filters.categoryId;
+      andConditions.push({ categoryId: filters.categoryId });
     }
     if (filters?.query) {
-      where.OR = [
-        { title: { contains: filters.query, mode: 'insensitive' } },
-        { author: { contains: filters.query, mode: 'insensitive' } },
-      ];
+      andConditions.push({
+        OR: [
+          { title: { contains: filters.query, mode: 'insensitive' } },
+          { author: { contains: filters.query, mode: 'insensitive' } },
+        ],
+      });
     }
-    // Only approved used books, or New books. Null means new book without approval needs
-    where.OR = where.OR || [];
-    where.OR.push({ isUsed: false });
-    where.OR.push({ isUsed: true, approvalStatus: 'APPROVED' });
+
+    const where: Prisma.BookWhereInput = { AND: andConditions };
 
     return database.prisma.book.findMany({
       where,

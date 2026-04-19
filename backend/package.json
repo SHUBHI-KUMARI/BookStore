@@ -9,7 +9,12 @@
     "start": "node dist/server.js",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"src/**/*.ts\"",
-    "lintfix": "eslint \"src/**/*.ts\" --fix"
+    "lintfix": "eslint \"src/**/*.ts\" --fix",
+    "db:seed": "npx ts-node prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset --force && npm run db:seed"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "keywords": [],
   "author": "",

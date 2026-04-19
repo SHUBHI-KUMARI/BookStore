@@ -28,4 +28,25 @@ export class UserRepository {
       data,
     });
   }
+
+  /**
+   * Update an existing user
+   */
+  public async update(id: string, data: Prisma.UserUpdateInput) {
+    return database.prisma.user.update({
+      where: { id },
+      data,
+      select: { id: true, name: true, email: true, role: true },
+    });
+  }
+
+  /**
+   * Find all users (admin use)
+   */
+  public async findAll() {
+    return database.prisma.user.findMany({
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   UploadCloud,
   CheckCircle2,
@@ -10,34 +10,54 @@ import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { Textarea } from "../components/ui/Textarea";
 import { Button } from "../components/ui/Button";
+import { bookService } from "../services/bookService";
+import api from "../services/api";
 
 const CATEGORY_OPTIONS = [
-  { value: "fiction", label: "Fiction & Literature" },
-  { value: "science", label: "Science & Tech" },
-  { value: "business", label: "Business & Economy" },
-  { value: "history", label: "History & Biography" },
-  { value: "textbooks", label: "Textbooks" },
+  { value: "", label: "Select a category" },
 ];
 
 const CONDITION_OPTIONS = [
-  { value: "mint", label: "Mint (Like New)" },
-  { value: "good", label: "Good (Minor wear)" },
-  { value: "fair", label: "Fair (Noticeable wear, fully readable)" },
-  { value: "poor", label: "Poor (Heavy wear, missing pages)" },
+  { value: "NEW", label: "New" },
+  { value: "GOOD", label: "Good (Minor wear)" },
+  { value: "FAIR", label: "Fair (Noticeable wear)" },
+  { value: "POOR", label: "Poor (Heavy wear)" },
 ];
 
 export const Sell = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [categories, setCategories] = useState(CATEGORY_OPTIONS);
   const [formData, setFormData] = useState({
     title: "",
     author: "",
-    category: "",
-    condition: "",
+    categoryId: "",
+    condition: "GOOD",
     price: "",
     description: "",
     contact: "",
   });
+  const [error, setError] = useState("");
+
+  // Load categories on mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await api.get('/categories');
+      setCategories([
+        { value: "", label: "Select a category" },
+        ...res.data.map((c: { id: string; name: string }) => ({
+          value: c.id,
+          label: c.name,
+        })),
+      ]);
+    } catch {
+      // Keep default empty option
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -47,14 +67,29 @@ export const Sell = () => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+
+    try {
+      await bookService.createBook({
+        title: formData.title,
+        author: formData.author,
+        price: Number(formData.price),
+        stock: 1,
+        categoryId: formData.categoryId,
+        condition: formData.condition,
+        description: formData.description,
+      });
       setIsSuccess(true);
-    }, 1500);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? "Failed to submit listing. Please try again.";
+      setError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSuccess) {
@@ -71,7 +106,7 @@ export const Sell = () => {
             Your book has been sent for review. Once approved by our team, it
             will be live on the marketplace.
           </p>
-          <Button onClick={() => setIsSuccess(false)} className="w-full">
+          <Button onClick={() => { setIsSuccess(false); setFormData({ title: "", author: "", categoryId: "", condition: "GOOD", price: "", description: "", contact: "" }); }} className="w-full">
             List Another Book
           </Button>
         </div>
@@ -142,9 +177,9 @@ export const Sell = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Select
                 label="Category"
-                name="category"
-                options={CATEGORY_OPTIONS}
-                value={formData.category}
+                name="categoryId"
+                options={categories}
+                value={formData.categoryId}
                 onChange={handleChange}
                 required
               />
@@ -232,6 +267,12 @@ export const Sell = () => {
               required
             />
           </div>
+
+          {error && (
+            <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
 
           <div className="mt-10 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="text-sm font-medium text-gray-500 text-center sm:text-left">

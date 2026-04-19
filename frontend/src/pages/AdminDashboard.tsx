@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   BookOpen,
@@ -10,61 +10,32 @@ import {
   Search,
   MoreVertical,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
+import { adminService } from "../services/adminService";
+import type { Order } from "../services/orderService";
+import type { Book } from "../services/bookService";
+import type { AdminUser } from "../services/adminService";
 
-const STATS = [
-  { title: "Total Sales", value: "$12,450", percent: "+14%", icon: BarChart3 },
-  { title: "Active Users", value: "1,245", percent: "+8%", icon: Users },
-  { title: "Total Books", value: "8,412", percent: "+2%", icon: BookOpen },
-  { title: "Pending Approval", value: "24", percent: "-5%", icon: CheckCircle },
-];
-
-const RECENT_ORDERS = [
-  {
-    id: "#ORD-001",
-    user: "Mike Ross",
-    date: "Oct 14",
-    total: "$45.00",
-    status: "Shipped",
-  },
-  {
-    id: "#ORD-002",
-    user: "Rachel Zane",
-    date: "Oct 14",
-    total: "$22.50",
-    status: "Processing",
-  },
-  {
-    id: "#ORD-003",
-    user: "Harvey Specter",
-    date: "Oct 13",
-    total: "$110.00",
-    status: "Delivered",
-  },
-];
-
-const PENDING_LISTINGS = [
-  {
-    id: "LST-99",
-    title: "Calculus Early Transcendentals",
-    user: "Tom A.",
-    condition: "Good",
-    price: "$40.00",
-  },
-  {
-    id: "LST-100",
-    title: "The Pragmatic Programmer",
-    user: "Anna B.",
-    condition: "Mint",
-    price: "$25.00",
-  },
-];
+interface StatsData {
+  totalSales: number;
+  totalOrders: number;
+  activeUsers: number;
+  totalBooks: number;
+  pendingApproval: number;
+}
 
 export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const { user, logout } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [stats, setStats] = useState<StatsData | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [pendingBooks, setPendingBooks] = useState<Book[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
 
   const MENU = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -74,6 +45,104 @@ export const AdminDashboard = () => {
     { id: "users", label: "Users", icon: Users },
     { id: "settings", label: "Settings", icon: Settings },
   ];
+
+  useEffect(() => {
+    loadOverviewData();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "orders") loadOrders();
+    if (activeTab === "approvals") loadPendingBooks();
+    if (activeTab === "users") loadUsers();
+    if (activeTab === "books") loadAllBooks();
+  }, [activeTab]);
+
+  const loadOverviewData = async () => {
+    setIsLoading(true);
+    try {
+      const [ordersData, booksData, usersData] = await Promise.all([
+        adminService.getAllOrders(),
+        adminService.getAllBooks(),
+        adminService.getAllUsers(),
+      ]);
+      const totalSales = ordersData
+        .filter((o) => o.paymentStatus === "COMPLETED")
+        .reduce((sum, o) => sum + o.totalAmount, 0);
+      const pendingBooks = booksData.filter(
+        (b) => b.isUsed && b.approvalStatus === "PENDING"
+      ).length;
+      setStats({
+        totalSales,
+        totalOrders: ordersData.length,
+        activeUsers: usersData.length,
+        totalBooks: booksData.length,
+        pendingApproval: pendingBooks,
+      });
+      setOrders(ordersData.slice(0, 5));
+      setPendingBooks(booksData.filter((b) => b.isUsed && b.approvalStatus === "PENDING").slice(0, 5));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadOrders = async () => {
+    setIsLoading(true);
+    try {
+      const data = await adminService.getAllOrders();
+      setOrders(data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadPendingBooks = async () => {
+    setIsLoading(true);
+    try {
+      const data = await adminService.getPendingBooks();
+      setPendingBooks(data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    setIsLoading(true);
+    try {
+      const data = await adminService.getAllUsers();
+      setUsers(data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadAllBooks = async () => {
+    setIsLoading(true);
+    try {
+      const data = await adminService.getAllBooks();
+      setAllBooks(data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApproveBook = async (id: string, status: "APPROVED" | "REJECTED") => {
+    try {
+      await adminService.approveBook(id, status);
+      await loadPendingBooks();
+      await loadOverviewData();
+    } catch (err) {
+      console.error("Failed to update book status:", err);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (id: string, status: Order["status"]) => {
+    try {
+      await adminService.updateOrderStatus(id, status);
+      await loadOrders();
+    } catch (err) {
+      console.error("Failed to update order status:", err);
+    }
+  };
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col md:flex-row">
@@ -149,7 +218,16 @@ export const AdminDashboard = () => {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              {STATS.map((stat, i) => (
+              {isLoading ? (
+                <div className="col-span-4 flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+                </div>
+              ) : stats ? [
+                { title: "Total Sales", value: `$${stats.totalSales.toFixed(0)}`, icon: BarChart3 },
+                { title: "Active Users", value: String(stats.activeUsers), icon: Users },
+                { title: "Total Books", value: String(stats.totalBooks), icon: BookOpen },
+                { title: "Pending Approval", value: String(stats.pendingApproval), icon: CheckCircle },
+              ].map((stat, i) => (
                 <div
                   key={i}
                   className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between"
@@ -158,11 +236,6 @@ export const AdminDashboard = () => {
                     <div className="w-10 h-10 rounded-lg bg-[var(--color-brand-cream)] flex items-center justify-center">
                       <stat.icon className="w-5 h-5 text-[var(--color-brand-muted-orange)]" />
                     </div>
-                    <span
-                      className={`text-xs font-bold px-2 py-1 rounded-full ${stat.percent.startsWith("+") ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}
-                    >
-                      {stat.percent}
-                    </span>
                   </div>
                   <p className="text-gray-500 font-medium text-sm mb-1">
                     {stat.title}
@@ -171,7 +244,7 @@ export const AdminDashboard = () => {
                     {stat.value}
                   </h3>
                 </div>
-              ))}
+              )) : null}
             </div>
 
             {/* Content Grid */}
@@ -182,54 +255,60 @@ export const AdminDashboard = () => {
                   <h3 className="font-bold text-[var(--color-brand-dark-blue)]">
                     Needs Approval
                   </h3>
-                  <button className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline">
+                  <button onClick={() => setActiveTab("approvals")} className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline">
                     View All
                   </button>
                 </div>
                 <div className="p-0 overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
-                      <tr>
-                        <th className="px-5 py-3">Book</th>
-                        <th className="px-5 py-3">User</th>
-                        <th className="px-5 py-3 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {PENDING_LISTINGS.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50/50">
-                          <td className="px-5 py-4">
-                            <p className="font-semibold text-[var(--color-brand-dark-blue)] line-clamp-1">
-                              {item.title}
-                            </p>
-                            <p className="text-gray-500 text-xs">
-                              {item.condition} • {item.price}
-                            </p>
-                          </td>
-                          <td className="px-5 py-4 text-gray-600">
-                            {item.user}
-                          </td>
-                          <td className="px-5 py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-3 text-xs w-auto"
-                              >
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="h-8 px-3 text-xs w-auto bg-emerald-600 hover:bg-emerald-700"
-                              >
-                                Approve
-                              </Button>
-                            </div>
-                          </td>
+                  {pendingBooks.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500 text-sm">No pending listings</div>
+                  ) : (
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
+                        <tr>
+                          <th className="px-5 py-3">Book</th>
+                          <th className="px-5 py-3">Seller</th>
+                          <th className="px-5 py-3 text-right">Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {pendingBooks.map((item) => (
+                          <tr key={item.id} className="hover:bg-gray-50/50">
+                            <td className="px-5 py-4">
+                              <p className="font-semibold text-[var(--color-brand-dark-blue)] line-clamp-1">
+                                {item.title}
+                              </p>
+                              <p className="text-gray-500 text-xs">
+                                {item.condition} • ${item.price.toFixed(2)}
+                              </p>
+                            </td>
+                            <td className="px-5 py-4 text-gray-600">
+                              {item.seller?.name ?? "Unknown"}
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-3 text-xs w-auto"
+                                  onClick={() => handleApproveBook(item.id, "REJECTED")}
+                                >
+                                  Reject
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-8 px-3 text-xs w-auto bg-emerald-600 hover:bg-emerald-700"
+                                  onClick={() => handleApproveBook(item.id, "APPROVED")}
+                                >
+                                  Approve
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
 
@@ -239,70 +318,263 @@ export const AdminDashboard = () => {
                   <h3 className="font-bold text-[var(--color-brand-dark-blue)]">
                     Recent Orders
                   </h3>
-                  <button className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline">
+                  <button onClick={() => setActiveTab("orders")} className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline">
                     View All
                   </button>
                 </div>
                 <div className="p-0 overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
-                      <tr>
-                        <th className="px-5 py-3">Order ID</th>
-                        <th className="px-5 py-3">Total</th>
-                        <th className="px-5 py-3 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {RECENT_ORDERS.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50/50">
-                          <td className="px-5 py-4">
-                            <p className="font-semibold text-[var(--color-brand-dark-blue)]">
-                              {order.id}
-                            </p>
-                            <p className="text-gray-500 text-xs">
-                              {order.user}
-                            </p>
-                          </td>
-                          <td className="px-5 py-4 font-medium">
-                            {order.total}
-                          </td>
-                          <td className="px-5 py-4 text-right">
-                            <span
-                              className={`px-2 py-1 rounded text-xs font-bold inline-block ${
-                                order.status === "Delivered"
-                                  ? "bg-emerald-50 text-emerald-600"
-                                  : order.status === "Shipped"
-                                    ? "bg-blue-50 text-blue-600"
-                                    : "bg-amber-50 text-amber-600"
-                              }`}
-                            >
-                              {order.status}
-                            </span>
-                          </td>
+                  {orders.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500 text-sm">No orders yet</div>
+                  ) : (
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
+                        <tr>
+                          <th className="px-5 py-3">Order ID</th>
+                          <th className="px-5 py-3">Total</th>
+                          <th className="px-5 py-3 text-right">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {orders.map((order) => (
+                          <tr key={order.id} className="hover:bg-gray-50/50">
+                            <td className="px-5 py-4">
+                              <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                                #{order.id.slice(0, 8).toUpperCase()}
+                              </p>
+                              <p className="text-gray-500 text-xs">
+                                {order.user?.name ?? "Unknown"}
+                              </p>
+                            </td>
+                            <td className="px-5 py-4 font-medium">
+                              ${order.totalAmount.toFixed(2)}
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-bold inline-block ${
+                                  order.status === "DELIVERED"
+                                    ? "bg-emerald-50 text-emerald-600"
+                                    : order.status === "SHIPPED"
+                                      ? "bg-blue-50 text-blue-600"
+                                      : "bg-amber-50 text-amber-600"
+                                }`}
+                              >
+                                {order.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Fallback for other tabs (Mocked for brevity) */}
-        {activeTab !== "overview" && (
+        {/* Fallback for other tabs */}
+        {activeTab === "books" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">All Books</h2>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+              </div>
+            ) : allBooks.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                <p className="text-gray-500">No books found.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
+                    <tr>
+                      <th className="px-5 py-3">Title</th>
+                      <th className="px-5 py-3">Author</th>
+                      <th className="px-5 py-3">Price</th>
+                      <th className="px-5 py-3">Stock</th>
+                      <th className="px-5 py-3">Type</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {allBooks.map((book) => (
+                      <tr key={book.id} className="hover:bg-gray-50/50">
+                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">{book.title}</td>
+                        <td className="px-5 py-4 text-gray-600">{book.author}</td>
+                        <td className="px-5 py-4">${book.price.toFixed(2)}</td>
+                        <td className="px-5 py-4">{book.stock}</td>
+                        <td className="px-5 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${book.isUsed ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]" : "bg-[var(--color-brand-muted-orange)]/10 text-[var(--color-brand-muted-orange)]"}`}>
+                            {book.isUsed ? "Used" : "New"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "approvals" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">Pending Listings</h2>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+              </div>
+            ) : pendingBooks.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                <p className="text-gray-500">No pending listings to review.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
+                    <tr>
+                      <th className="px-5 py-3">Book</th>
+                      <th className="px-5 py-3">Seller</th>
+                      <th className="px-5 py-3">Price</th>
+                      <th className="px-5 py-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {pendingBooks.map((book) => (
+                      <tr key={book.id} className="hover:bg-gray-50/50">
+                        <td className="px-5 py-4">
+                          <p className="font-semibold text-[var(--color-brand-dark-blue)]">{book.title}</p>
+                          <p className="text-gray-500 text-xs">{book.condition} • {book.author}</p>
+                        </td>
+                        <td className="px-5 py-4 text-gray-600">{book.seller?.name ?? "Unknown"}</td>
+                        <td className="px-5 py-4">${book.price.toFixed(2)}</td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" className="h-8 px-3 text-xs" onClick={() => handleApproveBook(book.id, "REJECTED")}>Reject</Button>
+                            <Button size="sm" className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApproveBook(book.id, "APPROVED")}>Approve</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "orders" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">All Orders</h2>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                <p className="text-gray-500">No orders yet.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
+                    <tr>
+                      <th className="px-5 py-3">Order</th>
+                      <th className="px-5 py-3">Customer</th>
+                      <th className="px-5 py-3">Total</th>
+                      <th className="px-5 py-3">Payment</th>
+                      <th className="px-5 py-3">Status</th>
+                      <th className="px-5 py-3">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {orders.map((order) => (
+                      <tr key={order.id} className="hover:bg-gray-50/50">
+                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">#{order.id.slice(0, 8).toUpperCase()}</td>
+                        <td className="px-5 py-4 text-gray-600">{order.user?.name ?? "Unknown"}</td>
+                        <td className="px-5 py-4">${order.totalAmount.toFixed(2)}</td>
+                        <td className="px-5 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${order.paymentStatus === "COMPLETED" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                            {order.paymentStatus}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${order.status === "DELIVERED" ? "bg-emerald-50 text-emerald-600" : order.status === "SHIPPED" ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <select
+                            value={order.status}
+                            onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as Order["status"])}
+                            className="text-xs border rounded px-2 py-1"
+                          >
+                            <option value="PENDING">Pending</option>
+                            <option value="SHIPPED">Shipped</option>
+                            <option value="DELIVERED">Delivered</option>
+                            <option value="CANCELLED">Cancelled</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "users" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">All Users</h2>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+              </div>
+            ) : users.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                <p className="text-gray-500">No users found.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
+                    <tr>
+                      <th className="px-5 py-3">Name</th>
+                      <th className="px-5 py-3">Email</th>
+                      <th className="px-5 py-3">Role</th>
+                      <th className="px-5 py-3">Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {users.map((u) => (
+                      <tr key={u.id} className="hover:bg-gray-50/50">
+                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">{u.name}</td>
+                        <td className="px-5 py-4 text-gray-600">{u.email}</td>
+                        <td className="px-5 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${u.role === "ADMIN" ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]" : "bg-gray-100 text-gray-600"}`}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "settings" && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center justify-center animate-in fade-in duration-500">
             <MoreVertical className="w-12 h-12 text-gray-300 mb-4" />
             <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)] mb-2">
-              Module Not Configured
+              Settings
             </h2>
             <p className="text-gray-500 max-w-md">
-              The {activeTab} management module is part of the expanded admin
-              functionality. Select Overview to see the dashboard.
+              Platform settings will be available in a future update.
             </p>
-            <Button className="mt-6" onClick={() => setActiveTab("overview")}>
-              Back to Overview
-            </Button>
           </div>
         )}
       </main>
