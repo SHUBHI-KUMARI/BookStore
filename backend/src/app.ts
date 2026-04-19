@@ -35,7 +35,7 @@ class App {
         origin: [
           'http://localhost:5173',
           'http://localhost:3000',
-          'https://book-store-black-nu.vercel.app',
+          'https://book-store-gamma-three.vercel.app',
         ],
         credentials: true,
       })
