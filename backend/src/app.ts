@@ -30,7 +30,16 @@ class App {
   }
 
   private initializeMiddlewares(): void {
-    this.app.use(cors());
+    this.app.use(
+      cors({
+        origin: [
+          'http://localhost:5173',
+          'http://localhost:3000',
+          'https://book-store-black-nu.vercel.app',
+        ],
+        credentials: true,
+      })
+    );
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
   }
