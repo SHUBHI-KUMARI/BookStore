@@ -8,6 +8,7 @@ import cartRoutes from './routes/CartRoutes';
 import categoryRoutes from './routes/CategoryRoutes';
 import orderRoutes from './routes/OrderRoutes';
 import reviewRoutes from './routes/ReviewRoutes';
+import userRoutes from './routes/UserRoutes';
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ class App {
     this.app.use('/api/cart', cartRoutes);
     this.app.use('/api/orders', orderRoutes);
     this.app.use('/api/reviews', reviewRoutes);
+    this.app.use('/api/user', userRoutes);
   }
 
   public listen(): void {
