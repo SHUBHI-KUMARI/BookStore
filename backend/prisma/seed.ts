@@ -1,155 +1,507 @@
-import { PrismaClient, Role, BookCondition, ApprovalStatus, OrderStatus, PaymentStatus } from '@prisma/client';
+import 'dotenv/config';
+
+import {
+  ApprovalStatus,
+  BookCondition,
+  OrderStatus,
+  PaymentStatus,
+  PrismaClient,
+  Role,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { v2 as cloudinary } from 'cloudinary';
 
 const prisma = new PrismaClient();
-
 const SALT_ROUNDS = 10;
+const CLOUDINARY_FOLDER = process.env.CLOUDINARY_FOLDER || 'rebook/books';
 
-// Categories data
-const categories = [
-  { name: 'Fiction & Literature', description: 'Novels, stories, and literary works' },
-  { name: 'Science & Technology', description: 'Science, technology, and engineering books' },
-  { name: 'Business & Economy', description: 'Business, finance, and economics' },
-  { name: 'History & Biography', description: 'Historical accounts and life stories' },
-  { name: 'Textbooks', description: 'Educational and academic books' },
-  { name: 'Arts & Photography', description: 'Art, design, and photography books' },
-  { name: 'Health & Wellness', description: 'Health, fitness, and medical books' },
-  { name: 'Children & Young Adult', description: 'Books for children and teens' },
+function requireEnv(name: string) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing ${name} in backend/.env`);
+  }
+
+  return value;
+}
+
+cloudinary.config({
+  cloud_name: requireEnv('CLOUDINARY_CLOUD_NAME'),
+  api_key: requireEnv('CLOUDINARY_KEY'),
+  api_secret: requireEnv('CLOUDINARY_SECRET'),
+});
+
+type UserSeed = {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+  phone: string;
+  address: string;
+  age: number;
+};
+
+type CategorySeed = {
+  name: string;
+  description: string;
+  keywords: string[];
+};
+
+const categorySeeds: CategorySeed[] = [
+  {
+    name: 'Fiction & Literature',
+    description: 'Classic, literary, and contemporary fiction.',
+    keywords: ['fiction', 'literature', 'novel', 'classic', 'literary', 'short stories'],
+  },
+  {
+    name: 'Science & Technology',
+    description: 'Programming, engineering, mathematics, and science.',
+    keywords: [
+      'science',
+      'technology',
+      'computer',
+      'programming',
+      'software',
+      'engineering',
+      'physics',
+      'chemistry',
+      'mathematics',
+      'algorithms',
+      'data',
+    ],
+  },
+  {
+    name: 'Business & Economy',
+    description: 'Business, investing, leadership, and economics.',
+    keywords: [
+      'business',
+      'economics',
+      'finance',
+      'investing',
+      'leadership',
+      'management',
+      'marketing',
+      'entrepreneurship',
+    ],
+  },
+  {
+    name: 'History & Biography',
+    description: 'Memoirs, biographies, and historical nonfiction.',
+    keywords: [
+      'history',
+      'biography',
+      'memoir',
+      'autobiography',
+      'historical',
+      'war',
+      'civilization',
+      'president',
+    ],
+  },
+  {
+    name: 'Textbooks',
+    description: 'Academic and higher-education course material.',
+    keywords: [
+      'textbook',
+      'education',
+      'study',
+      'college',
+      'university',
+      'reference',
+      'curriculum',
+      'exam',
+    ],
+  },
+  {
+    name: 'Arts & Photography',
+    description: 'Art, design, creativity, visual culture, and photography.',
+    keywords: ['art', 'photography', 'design', 'drawing', 'illustration', 'comics', 'creative'],
+  },
+  {
+    name: 'Health & Wellness',
+    description: 'Health, nutrition, wellness, medicine, and wellbeing.',
+    keywords: [
+      'health',
+      'wellness',
+      'medicine',
+      'nutrition',
+      'fitness',
+      'healing',
+      'sleep',
+      'trauma',
+      'psychology',
+    ],
+  },
+  {
+    name: 'Children & Young Adult',
+    description: 'Kids, middle-grade, and young adult books.',
+    keywords: ['children', 'juvenile', 'young adult', 'teen', 'middle grade', 'kids'],
+  },
+  {
+    name: 'Mystery & Thriller',
+    description: 'Crime, suspense, mystery, and thriller titles.',
+    keywords: ['mystery', 'thriller', 'crime', 'detective', 'suspense', 'murder'],
+  },
+  {
+    name: 'Fantasy & Sci-Fi',
+    description: 'Fantasy, science fiction, and speculative fiction.',
+    keywords: [
+      'fantasy',
+      'science fiction',
+      'sci-fi',
+      'speculative',
+      'dragon',
+      'magic',
+      'space',
+      'dystopian',
+    ],
+  },
+  {
+    name: 'Self-Help & Productivity',
+    description: 'Mindset, habits, productivity, and self-improvement.',
+    keywords: [
+      'self-help',
+      'productivity',
+      'success',
+      'habit',
+      'mindset',
+      'personal development',
+      'motivation',
+      'career',
+    ],
+  },
+  {
+    name: 'Poetry & Drama',
+    description: 'Poetry, plays, and dramatic literature.',
+    keywords: ['poetry', 'poems', 'drama', 'play', 'theater', 'theatre', 'shakespeare'],
+  },
 ];
 
-// Books data - 60 books with various genres, prices, and conditions
-const booksData = [
-  // Fiction & Literature
-  { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', price: 12.99, category: 'Fiction & Literature', isUsed: false },
-  { title: 'To Kill a Mockingbird', author: 'Harper Lee', price: 14.50, category: 'Fiction & Literature', isUsed: false },
-  { title: '1984', author: 'George Orwell', price: 11.99, category: 'Fiction & Literature', isUsed: false },
-  { title: 'Pride and Prejudice', author: 'Jane Austen', price: 10.99, category: 'Fiction & Literature', isUsed: false },
-  { title: 'The Catcher in the Rye', author: 'J.D. Salinger', price: 13.99, category: 'Fiction & Literature', isUsed: false },
-  { title: 'The Alchemist', author: 'Paulo Coelho', price: 15.99, category: 'Fiction & Literature', isUsed: false },
-  { title: 'Brave New World', author: 'Aldous Huxley', price: 12.50, category: 'Fiction & Literature', isUsed: false },
-  { title: 'The Lord of the Rings', author: 'J.R.R. Tolkien', price: 24.99, category: 'Fiction & Literature', isUsed: false },
-
-  // Used Fiction Books
-  { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', price: 6.50, category: 'Fiction & Literature', isUsed: true, condition: BookCondition.GOOD },
-  { title: '1984', author: 'George Orwell', price: 5.99, category: 'Fiction & Literature', isUsed: true, condition: BookCondition.FAIR },
-  { title: 'To Kill a Mockingbird', author: 'Harper Lee', price: 7.50, category: 'Fiction & Literature', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'Pride and Prejudice', author: 'Jane Austen', price: 4.99, category: 'Fiction & Literature', isUsed: true, condition: BookCondition.POOR },
-
-  // Science & Technology
-  { title: 'A Brief History of Time', author: 'Stephen Hawking', price: 18.99, category: 'Science & Technology', isUsed: false },
-  { title: 'The Selfish Gene', author: 'Richard Dawkins', price: 16.99, category: 'Science & Technology', isUsed: false },
-  { title: 'Sapiens', author: 'Yuval Noah Harari', price: 22.99, category: 'Science & Technology', isUsed: false },
-  { title: 'Clean Code', author: 'Robert C. Martin', price: 42.99, category: 'Science & Technology', isUsed: false },
-  { title: 'The Pragmatic Programmer', author: 'Andrew Hunt', price: 49.99, category: 'Science & Technology', isUsed: false },
-  { title: 'Introduction to Algorithms', author: 'Thomas H. Cormen', price: 85.00, category: 'Science & Technology', isUsed: false },
-  { title: 'JavaScript: The Good Parts', author: 'Douglas Crockford', price: 29.99, category: 'Science & Technology', isUsed: false },
-  { title: 'Design Patterns', author: 'Gang of Four', price: 54.99, category: 'Science & Technology', isUsed: false },
-
-  // Used Tech Books
-  { title: 'Clean Code', author: 'Robert C. Martin', price: 25.00, category: 'Science & Technology', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'Sapiens', author: 'Yuval Noah Harari', price: 12.99, category: 'Science & Technology', isUsed: true, condition: BookCondition.FAIR },
-  { title: 'JavaScript: The Good Parts', author: 'Douglas Crockford', price: 15.99, category: 'Science & Technology', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'Introduction to Algorithms', author: 'Thomas H. Cormen', price: 45.00, category: 'Science & Technology', isUsed: true, condition: BookCondition.GOOD },
-
-  // Business & Economy
-  { title: 'The Intelligent Investor', author: 'Benjamin Graham', price: 21.99, category: 'Business & Economy', isUsed: false },
-  { title: 'Rich Dad Poor Dad', author: 'Robert Kiyosaki', price: 14.99, category: 'Business & Economy', isUsed: false },
-  { title: 'Zero to One', author: 'Peter Thiel', price: 18.99, category: 'Business & Economy', isUsed: false },
-  { title: 'The Lean Startup', author: 'Eric Ries', price: 16.99, category: 'Business & Economy', isUsed: false },
-  { title: 'Think and Grow Rich', author: 'Napoleon Hill', price: 12.99, category: 'Business & Economy', isUsed: false },
-  { title: 'Good to Great', author: 'Jim Collins', price: 19.99, category: 'Business & Economy', isUsed: false },
-  { title: 'The Psychology of Money', author: 'Morgan Housel', price: 15.99, category: 'Business & Economy', isUsed: false },
-  { title: 'Atomic Habits', author: 'James Clear', price: 17.99, category: 'Business & Economy', isUsed: false },
-
-  // Used Business Books
-  { title: 'Rich Dad Poor Dad', author: 'Robert Kiyosaki', price: 8.99, category: 'Business & Economy', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'The Lean Startup', author: 'Eric Ries', price: 9.99, category: 'Business & Economy', isUsed: true, condition: BookCondition.FAIR },
-  { title: 'Atomic Habits', author: 'James Clear', price: 10.99, category: 'Business & Economy', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'The Psychology of Money', author: 'Morgan Housel', price: 8.50, category: 'Business & Economy', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'Think and Grow Rich', author: 'Napoleon Hill', price: 6.99, category: 'Business & Economy', isUsed: true, condition: BookCondition.POOR },
-
-  // History & Biography
-  { title: 'Becoming', author: 'Michelle Obama', price: 24.99, category: 'History & Biography', isUsed: false },
-  { title: 'Steve Jobs', author: 'Walter Isaacson', price: 19.99, category: 'History & Biography', isUsed: false },
-  { title: 'The Diary of Anne Frank', author: 'Anne Frank', price: 11.99, category: 'History & Biography', isUsed: false },
-  { title: 'Team of Rivals', author: 'Doris Kearns Goodwin', price: 22.99, category: 'History & Biography', isUsed: false },
-  { title: 'Unbroken', author: 'Laura Hillenbrand', price: 16.99, category: 'History & Biography', isUsed: false },
-  { title: 'The Wright Brothers', author: 'David McCullough', price: 18.99, category: 'History & Biography', isUsed: false },
-  { title: 'Hidden Figures', author: 'Margot Lee Shetterly', price: 15.99, category: 'History & Biography', isUsed: false },
-  { title: 'Leonardo da Vinci', author: 'Walter Isaacson', price: 21.99, category: 'History & Biography', isUsed: false },
-
-  // Used History Books
-  { title: 'Becoming', author: 'Michelle Obama', price: 14.99, category: 'History & Biography', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'Steve Jobs', author: 'Walter Isaacson', price: 12.99, category: 'History & Biography', isUsed: true, condition: BookCondition.FAIR },
-  { title: 'Unbroken', author: 'Laura Hillenbrand', price: 9.99, category: 'History & Biography', isUsed: true, condition: BookCondition.GOOD },
-
-  // Textbooks
-  { title: 'Calculus: Early Transcendentals', author: 'James Stewart', price: 89.99, category: 'Textbooks', isUsed: false },
-  { title: 'Campbell Biology', author: 'Jane B. Reece', price: 109.99, category: 'Textbooks', isUsed: false },
-  { title: 'Organic Chemistry', author: 'Paula Yurkanis', price: 95.00, category: 'Textbooks', isUsed: false },
-  { title: 'Principles of Economics', author: 'N. Gregory Mankiw', price: 79.99, category: 'Textbooks', isUsed: false },
-  { title: 'Physics for Scientists and Engineers', author: 'Serway & Jewett', price: 99.99, category: 'Textbooks', isUsed: false },
-
-  // Used Textbooks
-  { title: 'Calculus: Early Transcendentals', author: 'James Stewart', price: 45.00, category: 'Textbooks', isUsed: true, condition: BookCondition.FAIR },
-  { title: 'Campbell Biology', author: 'Jane B. Reece', price: 55.00, category: 'Textbooks', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'Organic Chemistry', author: 'Paula Yurkanis', price: 48.00, category: 'Textbooks', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'Principles of Economics', author: 'N. Gregory Mankiw', price: 40.00, category: 'Textbooks', isUsed: true, condition: BookCondition.FAIR },
-
-  // Arts & Photography
-  { title: 'The Story of Art', author: 'E.H. Gombrich', price: 35.99, category: 'Arts & Photography', isUsed: false },
-  { title: 'Understanding Comics', author: 'Scott McCloud', price: 18.99, category: 'Arts & Photography', isUsed: false },
-  { title: 'Color and Light', author: 'James Gurney', price: 24.99, category: 'Arts & Photography', isUsed: false },
-  { title: 'The Artist\'s Way', author: 'Julia Cameron', price: 19.99, category: 'Arts & Photography', isUsed: false },
-
-  // Used Arts Books
-  { title: 'The Story of Art', author: 'E.H. Gombrich', price: 22.00, category: 'Arts & Photography', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'The Artist\'s Way', author: 'Julia Cameron', price: 12.99, category: 'Arts & Photography', isUsed: true, condition: BookCondition.FAIR },
-
-  // Health & Wellness
-  { title: 'The Body Keeps the Score', author: 'Bessel van der Kolk', price: 18.99, category: 'Health & Wellness', isUsed: false },
-  { title: 'Why We Sleep', author: 'Matthew Walker', price: 16.99, category: 'Health & Wellness', isUsed: false },
-  { title: 'The Blue Zones', author: 'Dan Buettner', price: 15.99, category: 'Health & Wellness', isUsed: false },
-  { title: 'How Not to Die', author: 'Michael Greger', price: 19.99, category: 'Health & Wellness', isUsed: false },
-
-  // Used Health Books
-  { title: 'The Body Keeps the Score', author: 'Bessel van der Kolk', price: 10.99, category: 'Health & Wellness', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'Why We Sleep', author: 'Matthew Walker', price: 9.99, category: 'Health & Wellness', isUsed: true, condition: BookCondition.GOOD },
-
-  // Children & Young Adult
-  { title: 'Harry Potter and the Sorcerer\'s Stone', author: 'J.K. Rowling', price: 14.99, category: 'Children & Young Adult', isUsed: false },
-  { title: 'The Hunger Games', author: 'Suzanne Collins', price: 12.99, category: 'Children & Young Adult', isUsed: false },
-  { title: 'The Fault in Our Stars', author: 'John Green', price: 11.99, category: 'Children & Young Adult', isUsed: false },
-  { title: 'Charlotte\'s Web', author: 'E.B. White', price: 9.99, category: 'Children & Young Adult', isUsed: false },
-  { title: 'Percy Jackson: The Lightning Thief', author: 'Rick Riordan', price: 10.99, category: 'Children & Young Adult', isUsed: false },
-
-  // Used Children Books
-  { title: 'Harry Potter and the Sorcerer\'s Stone', author: 'J.K. Rowling', price: 7.99, category: 'Children & Young Adult', isUsed: true, condition: BookCondition.GOOD },
-  { title: 'The Hunger Games', author: 'Suzanne Collins', price: 6.99, category: 'Children & Young Adult', isUsed: true, condition: BookCondition.FAIR },
-  { title: 'Percy Jackson: The Lightning Thief', author: 'Rick Riordan', price: 5.99, category: 'Children & Young Adult', isUsed: true, condition: BookCondition.GOOD },
+const adminSeeds: UserSeed[] = [
+  {
+    name: 'Admin User',
+    email: 'admin@rebook.com',
+    password: 'admin123',
+    role: Role.ADMIN,
+    phone: '+1-555-100-0001',
+    address: '12 Market Street, Seattle, WA',
+    age: 34,
+  },
+  {
+    name: 'Priya Sharma',
+    email: 'priya.admin@rebook.com',
+    password: 'admin123',
+    role: Role.ADMIN,
+    phone: '+1-555-100-0002',
+    address: '88 Westlake Ave, Seattle, WA',
+    age: 31,
+  },
 ];
 
-// Sample reviews data
+const sellerSeeds: UserSeed[] = [
+  {
+    name: 'Jane Seller',
+    email: 'jane@example.com',
+    password: 'seller123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-200-0001',
+    address: '31 Pine Street, Portland, OR',
+    age: 29,
+  },
+  {
+    name: 'Marcus Reed',
+    email: 'marcus@example.com',
+    password: 'seller123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-200-0002',
+    address: '74 Lakeshore Dr, Chicago, IL',
+    age: 37,
+  },
+  {
+    name: 'Elena Alvarez',
+    email: 'elena@example.com',
+    password: 'seller123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-200-0003',
+    address: '19 Olive Grove, Austin, TX',
+    age: 33,
+  },
+  {
+    name: 'Noah Kim',
+    email: 'noah@example.com',
+    password: 'seller123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-200-0004',
+    address: '201 Cedar Lane, Denver, CO',
+    age: 27,
+  },
+  {
+    name: 'Fatima Hassan',
+    email: 'fatima@example.com',
+    password: 'seller123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-200-0005',
+    address: '6 Maple Avenue, Boston, MA',
+    age: 35,
+  },
+  {
+    name: 'Victor Chen',
+    email: 'victor@example.com',
+    password: 'seller123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-200-0006',
+    address: '55 Harbor Blvd, San Diego, CA',
+    age: 32,
+  },
+];
+
+const customerSeeds: UserSeed[] = [
+  {
+    name: 'John Customer',
+    email: 'john@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0001',
+    address: '421 River Road, Columbus, OH',
+    age: 26,
+  },
+  {
+    name: 'Test User',
+    email: 'test@example.com',
+    password: 'test123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0002',
+    address: '18 Ash Court, Phoenix, AZ',
+    age: 24,
+  },
+  {
+    name: 'Sophia Bennett',
+    email: 'sophia@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0003',
+    address: '91 Willow Drive, Charlotte, NC',
+    age: 30,
+  },
+  {
+    name: 'Liam Patel',
+    email: 'liam@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0004',
+    address: '67 Orchard Street, Jersey City, NJ',
+    age: 28,
+  },
+  {
+    name: 'Ava Thompson',
+    email: 'ava@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0005',
+    address: '203 Sunset Blvd, Los Angeles, CA',
+    age: 22,
+  },
+  {
+    name: 'Ethan Brooks',
+    email: 'ethan@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0006',
+    address: '47 Meadow Lane, Nashville, TN',
+    age: 39,
+  },
+  {
+    name: 'Mia Robinson',
+    email: 'mia@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0007',
+    address: '5 Briarwood Ave, Atlanta, GA',
+    age: 27,
+  },
+  {
+    name: 'Lucas Martin',
+    email: 'lucas@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0008',
+    address: '820 Greenway Rd, Minneapolis, MN',
+    age: 36,
+  },
+  {
+    name: 'Zara Ali',
+    email: 'zara@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0009',
+    address: '260 Bay Street, Miami, FL',
+    age: 25,
+  },
+  {
+    name: 'Daniel Hughes',
+    email: 'daniel@example.com',
+    password: 'customer123',
+    role: Role.CUSTOMER,
+    phone: '+1-555-300-0010',
+    address: '12 Elm Street, Philadelphia, PA',
+    age: 41,
+  },
+];
+
 const reviewComments = [
-  'Excellent book! Highly recommended.',
-  'A masterpiece. Could not put it down.',
-  'Great read, very informative.',
-  'Changed my perspective on life.',
-  'Good content but could be shorter.',
-  'Well written and engaging throughout.',
-  'Not what I expected, but still good.',
-  'A must-read for everyone.',
-  'Okay book, nothing special.',
-  'Absolutely loved it!',
-  'Very insightful and practical.',
-  'Classic for a reason.',
+  'Excellent copy with a beautiful cover and very fair pricing.',
+  'This edition arrived in better condition than expected.',
+  'A strong read and a great addition to the marketplace.',
+  'Really happy to find this title with the original cover image intact.',
+  'Worth buying if you want a clean and reliable copy.',
+  'Fast shipping, accurate listing, and the book was exactly as described.',
+  'The condition notes matched the actual book perfectly.',
+  'One of the better used listings I have purchased online.',
+  'The cover art looked great and the pages were in solid condition.',
+  'A genuinely useful book and a good marketplace pickup.',
 ];
+
+function normalize(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function cleanText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+const imageUrlCache = new Map<string, string>();
+
+function sanitizePublicId(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+}
+
+function buildCoverPublicId(book: { id: string; isbn13: string | null; isbn10: string | null }) {
+  const base = book.isbn13 || book.isbn10 || book.id;
+  return sanitizePublicId(`catalog-${base}`);
+}
+
+async function uploadCoverImage(imageUrl: string, book: { id: string; isbn13: string | null; isbn10: string | null }) {
+  const cached = imageUrlCache.get(imageUrl);
+  if (cached) {
+    return cached;
+  }
+
+  const result = await cloudinary.uploader.upload(imageUrl, {
+    folder: CLOUDINARY_FOLDER,
+    public_id: buildCoverPublicId(book),
+    overwrite: true,
+    resource_type: 'image',
+  });
+
+  const cloudinaryUrl = result.secure_url || result.url;
+  if (!cloudinaryUrl) {
+    throw new Error(`Cloudinary upload failed for ${imageUrl}`);
+  }
+
+  imageUrlCache.set(imageUrl, cloudinaryUrl);
+  return cloudinaryUrl;
+}
+
+function deriveBasePrice(msrp: number | null, pages: number | null, isTextbook: boolean) {
+  if (msrp && Number.isFinite(msrp) && msrp > 0) {
+    return Number(msrp.toFixed(2));
+  }
+
+  const computed = isTextbook
+    ? 38 + Math.min((pages ?? 320) / 10, 55)
+    : 8 + Math.min((pages ?? 320) / 22, 28);
+  return Number(computed.toFixed(2));
+}
+
+function joinAuthors(
+  authors: Array<{ sortOrder: number; author: { name: string } }>,
+  fallbackTitle: string,
+) {
+  const names = authors
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((entry) => entry.author.name.trim())
+    .filter(Boolean);
+
+  return names.length > 0 ? names.join(', ') : `Unknown Author for ${fallbackTitle}`;
+}
+
+function resolveCategoryName(book: {
+  title: string;
+  publisher: string | null;
+  synopsis: string | null;
+  subjects: Array<{ subject: { name: string } }>;
+}) {
+  const subjectText = book.subjects.map((entry) => entry.subject.name).join(' ');
+  const haystack = normalize(
+    [book.title, book.publisher, book.synopsis, subjectText].filter(Boolean).join(' '),
+  );
+
+  let bestCategory = categorySeeds[0];
+  let bestScore = -1;
+
+  for (const category of categorySeeds) {
+    const score = category.keywords.reduce((total, keyword) => {
+      return total + (haystack.includes(normalize(keyword)) ? 1 : 0);
+    }, 0);
+
+    if (score > bestScore) {
+      bestCategory = category;
+      bestScore = score;
+    }
+  }
+
+  return bestCategory.name;
+}
+
+async function createUsers(seeds: UserSeed[]) {
+  const users = [];
+
+  for (const seed of seeds) {
+    const user = await prisma.user.create({
+      data: {
+        name: seed.name,
+        email: seed.email,
+        password: await bcrypt.hash(seed.password, SALT_ROUNDS),
+        role: seed.role,
+        phone: seed.phone,
+        address: seed.address,
+        age: seed.age,
+      },
+    });
+    users.push(user);
+  }
+
+  return users;
+}
 
 async function main() {
-  console.log('🌱 Starting database seeding...\n');
+  console.log('Rebuilding marketplace data from imported ISBNdb catalog...');
 
-  // Clean existing data
-  console.log('Cleaning existing data...');
+  const catalogBooks = await prisma.catalogBook.findMany({
+    where: {
+      OR: [{ imageOriginal: { not: null } }, { image: { not: null } }],
+    },
+    include: {
+      authors: {
+        include: { author: true },
+        orderBy: { sortOrder: 'asc' },
+      },
+      subjects: {
+        include: { subject: true },
+      },
+    },
+    orderBy: [{ title: 'asc' }, { createdAt: 'asc' }],
+  });
+
+  if (catalogBooks.length === 0) {
+    throw new Error(
+      'No catalog books with images were found. Run the ISBNdb sync first before seeding marketplace data.',
+    );
+  }
+
+  console.log(`Found ${catalogBooks.length} catalog books with usable cover images.`);
+
+  console.log('Removing old marketplace data...');
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.cartItem.deleteMany();
@@ -158,253 +510,285 @@ async function main() {
   await prisma.book.deleteMany();
   await prisma.category.deleteMany();
   await prisma.user.deleteMany();
-  console.log('✓ Cleaned existing data\n');
+  console.log('Old marketplace data removed.');
 
-  // Create users
-  console.log('Creating users...');
-  const adminPassword = await bcrypt.hash('admin123', SALT_ROUNDS);
-  const customerPassword = await bcrypt.hash('customer123', SALT_ROUNDS);
-  const sellerPassword = await bcrypt.hash('seller123', SALT_ROUNDS);
-
-  const admin = await prisma.user.create({
-    data: {
-      name: 'Admin User',
-      email: 'admin@rebook.com',
-      password: adminPassword,
-      role: Role.ADMIN,
-    },
-  });
-  console.log(`✓ Created admin: ${admin.email} / password: admin123`);
-
-  const customer = await prisma.user.create({
-    data: {
-      name: 'John Customer',
-      email: 'john@example.com',
-      password: customerPassword,
-      role: Role.CUSTOMER,
-    },
-  });
-  console.log(`✓ Created customer: ${customer.email} / password: customer123`);
-
-  const seller = await prisma.user.create({
-    data: {
-      name: 'Jane Seller',
-      email: 'jane@example.com',
-      password: sellerPassword,
-      role: Role.CUSTOMER,
-    },
-  });
-  console.log(`✓ Created seller: ${seller.email} / password: seller123`);
-
-  const testUser = await prisma.user.create({
-    data: {
-      name: 'Test User',
-      email: 'test@example.com',
-      password: await bcrypt.hash('test123', SALT_ROUNDS),
-      role: Role.CUSTOMER,
-    },
-  });
-  console.log(`✓ Created test user: ${testUser.email} / password: test123\n`);
-
-  // Create categories
   console.log('Creating categories...');
-  const categoryMap: Record<string, string> = {};
-  for (const cat of categories) {
-    const created = await prisma.category.create({
-      data: cat,
+  const createdCategories = await Promise.all(
+    categorySeeds.map((category) =>
+      prisma.category.create({
+        data: {
+          name: category.name,
+          description: category.description,
+        },
+      }),
+    ),
+  );
+  const categoryMap = new Map(createdCategories.map((category) => [category.name, category.id]));
+  console.log(`Created ${createdCategories.length} categories.`);
+
+  console.log('Creating users...');
+  const admins = await createUsers(adminSeeds);
+  const sellers = await createUsers(sellerSeeds);
+  const customers = await createUsers(customerSeeds);
+  const reviewUsers = [...customers, ...sellers];
+  console.log(`Created ${admins.length} admins, ${sellers.length} sellers, and ${customers.length} customers.`);
+
+  console.log('Creating books from catalog...');
+  const createdBooks: Array<{
+    id: string;
+    price: number;
+    isUsed: boolean;
+  }> = [];
+
+  let newBookCount = 0;
+  let usedBookCount = 0;
+
+  for (const [index, catalogBook] of catalogBooks.entries()) {
+    const categoryName = resolveCategoryName({
+      title: catalogBook.title,
+      publisher: catalogBook.publisher,
+      synopsis: catalogBook.synopsis ?? catalogBook.excerpt,
+      subjects: catalogBook.subjects,
     });
-    categoryMap[cat.name] = created.id;
-    console.log(`  ✓ Created category: ${cat.name}`);
-  }
-  console.log();
-
-  // Create books
-  console.log('Creating books...');
-  const createdBooks: Array<{ id: string; title: string; isUsed: boolean }> = [];
-  let newCount = 0;
-  let usedCount = 0;
-
-  for (const book of booksData) {
-    const categoryId = categoryMap[book.category];
+    const categoryId = categoryMap.get(categoryName);
     if (!categoryId) {
-      console.warn(`Skipping book with unknown category: ${book.category}`);
       continue;
     }
 
-    const stock = Math.floor(Math.random() * 20) + 5; // Random stock 5-25
+    const imageUrl = catalogBook.imageOriginal ?? catalogBook.image;
+    if (!imageUrl) {
+      continue;
+    }
 
-    const created = await prisma.book.create({
+    let cloudinaryUrl: string;
+    try {
+      cloudinaryUrl = await uploadCoverImage(imageUrl, catalogBook);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Skipping catalog book ${catalogBook.id} due to image upload failure: ${message}`);
+      continue;
+    }
+
+    const isTextbook = categoryName === 'Textbooks';
+    const basePrice = deriveBasePrice(catalogBook.msrp, catalogBook.pages, isTextbook);
+    const author = joinAuthors(catalogBook.authors, catalogBook.title);
+    const description = cleanText(catalogBook.synopsis) ?? cleanText(catalogBook.excerpt);
+
+    const newBook = await prisma.book.create({
       data: {
-        title: book.title,
-        author: book.author,
-        price: book.price,
-        stock: stock,
-        isUsed: book.isUsed,
-        condition: book.condition || BookCondition.NEW,
-        approvalStatus: book.isUsed ? ApprovalStatus.APPROVED : null,
-        categoryId: categoryId,
-        sellerId: book.isUsed ? seller.id : null,
+        title: catalogBook.title,
+        author,
+        price: basePrice,
+        stock: 5 + (index % 12),
+        isbn13: catalogBook.isbn13,
+        isbn10: catalogBook.isbn10,
+        publisher: cleanText(catalogBook.publisher),
+        language: cleanText(catalogBook.language) ?? 'en',
+        publishedAt: cleanText(catalogBook.datePublished),
+        description,
+        image: cloudinaryUrl,
+        isUsed: false,
+        condition: BookCondition.NEW,
+        approvalStatus: null,
+        categoryId,
+        catalogBookId: catalogBook.id,
+      },
+      select: { id: true, price: true, isUsed: true },
+    });
+
+    createdBooks.push(newBook);
+    newBookCount++;
+
+    const createUsedListing = index % 3 !== 1;
+    if (!createUsedListing) {
+      continue;
+    }
+
+    const conditionCycle = [BookCondition.GOOD, BookCondition.FAIR, BookCondition.GOOD, BookCondition.POOR];
+    const condition = conditionCycle[index % conditionCycle.length];
+    const seller = sellers[index % sellers.length];
+    const discount =
+      condition === BookCondition.GOOD ? 0.68 : condition === BookCondition.FAIR ? 0.54 : 0.39;
+
+    const usedBook = await prisma.book.create({
+      data: {
+        title: catalogBook.title,
+        author,
+        price: Number((basePrice * discount).toFixed(2)),
+        stock: 1 + (index % 2),
+        isbn13: catalogBook.isbn13,
+        isbn10: catalogBook.isbn10,
+        publisher: cleanText(catalogBook.publisher),
+        language: cleanText(catalogBook.language) ?? 'en',
+        publishedAt: cleanText(catalogBook.datePublished),
+        description,
+        image: cloudinaryUrl,
+        isUsed: true,
+        condition,
+        approvalStatus: ApprovalStatus.APPROVED,
+        categoryId,
+        sellerId: seller.id,
+        catalogBookId: catalogBook.id,
+      },
+      select: { id: true, price: true, isUsed: true },
+    });
+
+    createdBooks.push(usedBook);
+    usedBookCount++;
+  }
+
+  console.log(`Created ${createdBooks.length} marketplace books (${newBookCount} new, ${usedBookCount} used).`);
+
+  console.log('Creating reviews...');
+  const reviewableBooks = await prisma.book.findMany({
+    where: { isUsed: false },
+    orderBy: { createdAt: 'asc' },
+    take: Math.min(120, createdBooks.length),
+    select: { id: true },
+  });
+
+  let reviewCount = 0;
+
+  for (const [bookIndex, book] of reviewableBooks.entries()) {
+    const numberOfReviews = 2 + (bookIndex % 3);
+    const usedReviewerIds = new Set<string>();
+
+    for (let i = 0; i < numberOfReviews; i++) {
+      const reviewer = reviewUsers[(bookIndex + i) % reviewUsers.length];
+      if (usedReviewerIds.has(reviewer.id)) {
+        continue;
+      }
+
+      await prisma.review.create({
+        data: {
+          userId: reviewer.id,
+          bookId: book.id,
+          rating: 3 + ((bookIndex + i) % 3),
+          comment: reviewComments[(bookIndex + i) % reviewComments.length],
+        },
+      });
+
+      usedReviewerIds.add(reviewer.id);
+      reviewCount++;
+    }
+  }
+  console.log(`Created ${reviewCount} reviews.`);
+
+  console.log('Creating carts...');
+  const shoppableBooks = await prisma.book.findMany({
+    where: { isUsed: false, stock: { gt: 0 } },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+
+  let cartCount = 0;
+  for (const [customerIndex, customer] of customers.slice(0, 6).entries()) {
+    const cartSelections = [
+      shoppableBooks[(customerIndex * 4) % shoppableBooks.length],
+      shoppableBooks[(customerIndex * 4 + 1) % shoppableBooks.length],
+      shoppableBooks[(customerIndex * 4 + 2) % shoppableBooks.length],
+    ];
+
+    await prisma.cart.create({
+      data: {
+        userId: customer.id,
+        items: {
+          create: cartSelections.map((book, itemIndex) => ({
+            bookId: book.id,
+            quantity: 1 + ((customerIndex + itemIndex) % 2),
+          })),
+        },
       },
     });
 
-    createdBooks.push({ id: created.id, title: created.title, isUsed: created.isUsed });
-
-    if (book.isUsed) {
-      usedCount++;
-    } else {
-      newCount++;
-    }
+    cartCount++;
   }
+  console.log(`Created ${cartCount} carts.`);
 
-  console.log(`✓ Created ${newCount} new books`);
-  console.log(`✓ Created ${usedCount} used books`);
-  console.log(`✓ Total: ${createdBooks.length} books\n`);
-
-  // Create reviews
-  console.log('Creating reviews...');
-  let reviewCount = 0;
-  const users = [customer, seller, testUser];
-
-  for (const book of createdBooks.slice(0, 40)) { // Add reviews to first 40 books
-    const numReviews = Math.floor(Math.random() * 4) + 1; // 1-4 reviews per book
-
-    for (let i = 0; i < numReviews; i++) {
-      const reviewer = users[Math.floor(Math.random() * users.length)];
-      const rating = Math.floor(Math.random() * 3) + 3; // Rating 3-5
-      const comment = reviewComments[Math.floor(Math.random() * reviewComments.length)];
-
-      try {
-        await prisma.review.create({
-          data: {
-            rating,
-            comment,
-            userId: reviewer.id,
-            bookId: book.id,
-          },
-        });
-        reviewCount++;
-      } catch {
-        // Skip if duplicate review (user already reviewed this book)
-      }
-    }
-  }
-  console.log(`✓ Created ${reviewCount} reviews\n`);
-
-  // Create carts
-  console.log('Creating carts...');
-  const newBooks = createdBooks.filter(b => !b.isUsed);
-
-  // Customer cart with some items
-  const customerCart = await prisma.cart.create({
-    data: {
-      userId: customer.id,
-      items: {
-        create: [
-          { bookId: newBooks[0].id, quantity: 2 },
-          { bookId: newBooks[1].id, quantity: 1 },
-          { bookId: newBooks[2].id, quantity: 1 },
-        ],
-      },
-    },
-  });
-  console.log(`✓ Created cart for customer with 3 items\n`);
-
-  // Create orders
   console.log('Creating orders...');
-
-  // Order 1: Completed order
-  const order1Books = [newBooks[3], newBooks[4], newBooks[5]];
-  const order1Total = order1Books.reduce((sum, b) => {
-    const book = booksData.find(book => book.title === b.title && !book.isUsed);
-    return sum + (book?.price || 0) * (Math.floor(Math.random() * 2) + 1);
-  }, 0);
-
-  const order1 = await prisma.order.create({
-    data: {
-      userId: customer.id,
-      status: OrderStatus.DELIVERED,
-      totalAmount: order1Total,
-      paymentStatus: PaymentStatus.COMPLETED,
-      items: {
-        create: order1Books.map(b => ({
-          bookId: b.id,
-          quantity: Math.floor(Math.random() * 2) + 1,
-          price: booksData.find(book => book.title === b.title && !book.isUsed)?.price || 0,
-        })),
-      },
-    },
+  const orderBooks = await prisma.book.findMany({
+    where: { stock: { gt: 0 } },
+    orderBy: [{ isUsed: 'asc' }, { createdAt: 'asc' }],
+    select: { id: true, price: true },
   });
-  console.log(`✓ Created completed order #${order1.id.slice(0, 8)} for customer`);
 
-  // Order 2: Pending order
-  const order2Books = [newBooks[6], newBooks[7]];
-  const order2Total = order2Books.reduce((sum, b) => {
-    const book = booksData.find(book => book.title === b.title && !book.isUsed);
-    return sum + (book?.price || 0);
-  }, 0);
+  let orderCount = 0;
+  for (const [customerIndex, customer] of customers.slice(0, 8).entries()) {
+    for (let orderOffset = 0; orderOffset < 2; orderOffset++) {
+      const statusCycle = [
+        OrderStatus.DELIVERED,
+        OrderStatus.SHIPPED,
+        OrderStatus.PENDING,
+        OrderStatus.CANCELLED,
+      ];
+      const status = statusCycle[(customerIndex + orderOffset) % statusCycle.length];
+      const items = [
+        orderBooks[(customerIndex * 5 + orderOffset) % orderBooks.length],
+        orderBooks[(customerIndex * 5 + orderOffset + 1) % orderBooks.length],
+        orderBooks[(customerIndex * 5 + orderOffset + 3) % orderBooks.length],
+      ];
 
-  const order2 = await prisma.order.create({
-    data: {
-      userId: customer.id,
-      status: OrderStatus.PENDING,
-      totalAmount: order2Total,
-      paymentStatus: PaymentStatus.PENDING,
-      items: {
-        create: order2Books.map(b => ({
-          bookId: b.id,
-          quantity: 1,
-          price: booksData.find(book => book.title === b.title && !book.isUsed)?.price || 0,
-        })),
-      },
-    },
-  });
-  console.log(`✓ Created pending order #${order2.id.slice(0, 8)} for customer`);
+      const uniqueItems = Array.from(new Map(items.map((item) => [item.id, item])).values());
+      const lineItems = uniqueItems.map((item, itemIndex) => ({
+        bookId: item.id,
+        quantity: 1 + ((customerIndex + itemIndex + orderOffset) % 2),
+        price: item.price,
+      }));
 
-  // Order 3: Shipped order for test user
-  const order3Books = [newBooks[8], newBooks[9], newBooks[10], newBooks[11]];
-  const order3Total = order3Books.reduce((sum, b) => {
-    const book = booksData.find(book => book.title === b.title && !book.isUsed);
-    return sum + (book?.price || 0) * 2;
-  }, 0);
+      const totalAmount = Number(
+        lineItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2),
+      );
 
-  const order3 = await prisma.order.create({
-    data: {
-      userId: testUser.id,
-      status: OrderStatus.SHIPPED,
-      totalAmount: order3Total,
-      paymentStatus: PaymentStatus.COMPLETED,
-      items: {
-        create: order3Books.map(b => ({
-          bookId: b.id,
-          quantity: 2,
-          price: booksData.find(book => book.title === b.title && !book.isUsed)?.price || 0,
-        })),
-      },
-    },
-  });
-  console.log(`✓ Created shipped order #${order3.id.slice(0, 8)} for test user\n`);
+      await prisma.order.create({
+        data: {
+          userId: customer.id,
+          status,
+          paymentStatus:
+            status === OrderStatus.PENDING
+              ? PaymentStatus.PENDING
+              : status === OrderStatus.CANCELLED
+                ? PaymentStatus.REFUNDED
+                : PaymentStatus.COMPLETED,
+          totalAmount,
+          items: {
+            create: lineItems,
+          },
+        },
+      });
 
-  // Summary
-  console.log('=================================');
-  console.log('🎉 Database seeding completed!');
-  console.log('=================================');
-  console.log('\nCredentials:');
-  console.log('  Admin:    admin@rebook.com / admin123');
+      orderCount++;
+    }
+  }
+  console.log(`Created ${orderCount} orders.`);
+
+  const [userCount, categoryCount, bookCount, cartTotal, orderTotal, reviewTotal] =
+    await Promise.all([
+      prisma.user.count(),
+      prisma.category.count(),
+      prisma.book.count(),
+      prisma.cart.count(),
+      prisma.order.count(),
+      prisma.review.count(),
+    ]);
+
+  console.log('Marketplace seeding complete.');
+  console.log('Credentials:');
+  console.log('  Admin: admin@rebook.com / admin123');
+  console.log('  Seller: jane@example.com / seller123');
   console.log('  Customer: john@example.com / customer123');
-  console.log('  Seller:   jane@example.com / seller123');
-  console.log('  Test:     test@example.com / test123');
-  console.log('\nSummary:');
-  console.log(`  • ${categories.length} categories`);
-  console.log(`  • ${createdBooks.length} books (${newCount} new, ${usedCount} used)`);
-  console.log(`  • ${reviewCount} reviews`);
-  console.log(`  • ${4} users`);
-  console.log(`  • ${3} orders`);
-  console.log(`  • ${1} cart with items`);
+  console.log('  Test: test@example.com / test123');
+  console.log('Summary:');
+  console.log(`  Users: ${userCount}`);
+  console.log(`  Categories: ${categoryCount}`);
+  console.log(`  Books: ${bookCount}`);
+  console.log(`  Carts: ${cartTotal}`);
+  console.log(`  Orders: ${orderTotal}`);
+  console.log(`  Reviews: ${reviewTotal}`);
 }
 
 main()
-  .catch((e) => {
-    console.error('Error seeding database:', e);
+  .catch((error) => {
+    console.error('Error seeding marketplace data:', error);
     process.exit(1);
   })
   .finally(async () => {

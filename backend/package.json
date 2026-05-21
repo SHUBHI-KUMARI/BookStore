@@ -12,7 +12,12 @@
     "lint": "eslint \"src/**/*.ts\"",
     "lintfix": "eslint \"src/**/*.ts\" --fix",
     "db:seed": "npx ts-node prisma/seed.ts",
-    "db:reset": "npx prisma migrate reset --force && npm run db:seed"
+    "db:reset": "npm run db:seed",
+    "isbndb:sync": "npx ts-node prisma/isbndb-sync.ts",
+    "isbndb:status": "npx ts-node prisma/isbndb-sync.ts --mode=status",
+    "isbndb:enrich-books": "npx ts-node prisma/isbndb-sync.ts --mode=enrich-books",
+    "isbndb:enrich-authors": "npx ts-node prisma/isbndb-sync.ts --mode=enrich-authors",
+    "isbndb:updates": "npx ts-node prisma/isbndb-sync.ts --mode=sync-updates"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -29,6 +34,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.6.0",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.6.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
