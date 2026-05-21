@@ -31,11 +31,11 @@ export const adminService = {
 
   async approveBook(
     id: string,
-    status: "APPROVED" | "REJECTED"
+    status: "APPROVED" | "REJECTED",
   ): Promise<{ book: Book; message: string }> {
     const res = await api.patch<{ book: Book; message: string }>(
       `/books/admin/${id}/approve`,
-      { status }
+      { status },
     );
     return res.data;
   },
@@ -53,7 +53,7 @@ export const adminService = {
 
   async updateOrderStatus(
     orderId: string,
-    status: Order["status"]
+    status: Order["status"],
   ): Promise<Order> {
     const res = await api.put<Order>(`/orders/${orderId}/status`, { status });
     return res.data;

@@ -28,15 +28,19 @@ export const Checkout = () => {
   const [upiId, setUpiId] = useState("");
   const [error, setError] = useState("");
 
-  const cartItems = cart?.items.map((item) => ({
-    id: item.id,
-    bookId: item.book.id,
-    title: item.book.title,
-    qty: item.quantity,
-    price: item.book.price,
-  })) ?? [];
+  const cartItems =
+    cart?.items.map((item) => ({
+      id: item.id,
+      bookId: item.book.id,
+      title: item.book.title,
+      qty: item.quantity,
+      price: item.book.price,
+    })) ?? [];
 
-  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.qty, 0);
+  const subtotal = cartItems.reduce(
+    (acc, item) => acc + item.price * item.qty,
+    0,
+  );
   const delivery = subtotal > 50 ? 0 : 5.99;
   const total = subtotal + delivery;
 
@@ -64,8 +68,9 @@ export const Checkout = () => {
       clearCartLocally();
       setIsSuccess(true);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? "Failed to process checkout. Please try again.";
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Failed to process checkout. Please try again.";
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -86,7 +91,8 @@ export const Checkout = () => {
             Order #{createdOrderId.slice(0, 8).toUpperCase()}
           </p>
           <p className="text-gray-500 mb-8">
-            Thank you for shopping with ReBook. Your order has been placed successfully.
+            Thank you for shopping with ReBook. Your order has been placed
+            successfully.
           </p>
           <Link to="/books" className="w-full">
             <Button className="w-full">Continue Shopping</Button>
@@ -302,7 +308,8 @@ export const Checkout = () => {
                       onChange={(e) => setUpiId(e.target.value)}
                     />
                     <div className="text-center text-sm text-gray-500 mt-2">
-                      Please enter your UPI ID. You will receive a payment request on your UPI app.
+                      Please enter your UPI ID. You will receive a payment
+                      request on your UPI app.
                     </div>
                   </div>
                 )}
@@ -323,7 +330,10 @@ export const Checkout = () => {
                   <p className="text-gray-500 text-sm">Your cart is empty.</p>
                 ) : (
                   cartItems.map((item, idx) => (
-                    <div key={idx} className="flex justify-between gap-4 text-sm">
+                    <div
+                      key={idx}
+                      className="flex justify-between gap-4 text-sm"
+                    >
                       <div className="flex gap-2">
                         <span className="font-bold text-gray-400">
                           {item.qty}x

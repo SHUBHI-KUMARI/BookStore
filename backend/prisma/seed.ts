@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 import {
   ApprovalStatus,
   BookCondition,
@@ -9,26 +7,9 @@ import {
   Role,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { v2 as cloudinary } from 'cloudinary';
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
-const CLOUDINARY_FOLDER = process.env.CLOUDINARY_FOLDER || 'rebook/books';
-
-function requireEnv(name: string) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing ${name} in backend/.env`);
-  }
-
-  return value;
-}
-
-cloudinary.config({
-  cloud_name: requireEnv('CLOUDINARY_CLOUD_NAME'),
-  api_key: requireEnv('CLOUDINARY_KEY'),
-  api_secret: requireEnv('CLOUDINARY_SECRET'),
-});
 
 type UserSeed = {
   name: string;
@@ -369,39 +350,6 @@ function cleanText(value: string | null | undefined) {
   return trimmed ? trimmed : null;
 }
 
-const imageUrlCache = new Map<string, string>();
-
-function sanitizePublicId(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
-}
-
-function buildCoverPublicId(book: { id: string; isbn13: string | null; isbn10: string | null }) {
-  const base = book.isbn13 || book.isbn10 || book.id;
-  return sanitizePublicId(`catalog-${base}`);
-}
-
-async function uploadCoverImage(imageUrl: string, book: { id: string; isbn13: string | null; isbn10: string | null }) {
-  const cached = imageUrlCache.get(imageUrl);
-  if (cached) {
-    return cached;
-  }
-
-  const result = await cloudinary.uploader.upload(imageUrl, {
-    folder: CLOUDINARY_FOLDER,
-    public_id: buildCoverPublicId(book),
-    overwrite: true,
-    resource_type: 'image',
-  });
-
-  const cloudinaryUrl = result.secure_url || result.url;
-  if (!cloudinaryUrl) {
-    throw new Error(`Cloudinary upload failed for ${imageUrl}`);
-  }
-
-  imageUrlCache.set(imageUrl, cloudinaryUrl);
-  return cloudinaryUrl;
-}
-
 function deriveBasePrice(msrp: number | null, pages: number | null, isTextbook: boolean) {
   if (msrp && Number.isFinite(msrp) && msrp > 0) {
     return Number(msrp.toFixed(2));
@@ -560,15 +508,6 @@ async function main() {
       continue;
     }
 
-    let cloudinaryUrl: string;
-    try {
-      cloudinaryUrl = await uploadCoverImage(imageUrl, catalogBook);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`Skipping catalog book ${catalogBook.id} due to image upload failure: ${message}`);
-      continue;
-    }
-
     const isTextbook = categoryName === 'Textbooks';
     const basePrice = deriveBasePrice(catalogBook.msrp, catalogBook.pages, isTextbook);
     const author = joinAuthors(catalogBook.authors, catalogBook.title);
@@ -586,7 +525,7 @@ async function main() {
         language: cleanText(catalogBook.language) ?? 'en',
         publishedAt: cleanText(catalogBook.datePublished),
         description,
-        image: cloudinaryUrl,
+        image: imageUrl,
         isUsed: false,
         condition: BookCondition.NEW,
         approvalStatus: null,
@@ -622,7 +561,7 @@ async function main() {
         language: cleanText(catalogBook.language) ?? 'en',
         publishedAt: cleanText(catalogBook.datePublished),
         description,
-        image: cloudinaryUrl,
+        image: imageUrl,
         isUsed: true,
         condition,
         approvalStatus: ApprovalStatus.APPROVED,

@@ -15,6 +15,7 @@ export const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { itemCount } = useCart();
   const navigate = useNavigate();
+  const firstName = user?.name?.trim().split(/\s+/)[0] || "Reader";
 
   const handleLogout = () => {
     logout();
@@ -82,7 +83,7 @@ export const Navbar = () => {
                   to={user?.role === "ADMIN" ? "/admin" : "/dashboard"}
                   className="text-[var(--color-brand-dark-blue)] font-semibold hover:underline"
                 >
-                  Hi, {user?.name.split(" ")[0]}
+                  Hi, {firstName}
                 </Link>
                 <Button
                   size="sm"

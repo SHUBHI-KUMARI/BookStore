@@ -14,18 +14,12 @@ import { BookCard } from "../components/books/BookCard";
 import { Button } from "../components/ui/Button";
 import { bookService, type Book } from "../services/bookService";
 import api from "../services/api";
+import { getBookCoverUrl } from "../utils/bookCovers";
 
 interface Category {
   id: string;
   name: string;
 }
-
-const PLACEHOLDER_COVERS = [
-  "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1614544048536-0d28caf77f41?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&q=80&w=600",
-];
 
 const CONDITIONS = [
   { value: "", label: "Any" },
@@ -47,7 +41,9 @@ export const Books = () => {
 
   // Filter states - initialized from URL params
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-  const [activeCategory, setActiveCategory] = useState(searchParams.get("category") || "");
+  const [activeCategory, setActiveCategory] = useState(
+    searchParams.get("category") || "",
+  );
   const [activeCondition, setActiveCondition] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -67,10 +63,17 @@ export const Books = () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("q", searchQuery);
     if (activeCategory) params.set("category", activeCategory);
-    if (activeCondition && activeCondition !== "NEW") params.set("condition", activeCondition);
+    if (activeCondition && activeCondition !== "NEW")
+      params.set("condition", activeCondition);
     if (isUsedParam === "true") params.set("isUsed", "true");
     setSearchParams(params, { replace: true });
-  }, [searchQuery, activeCategory, activeCondition, isUsedParam]);
+  }, [
+    searchQuery,
+    activeCategory,
+    activeCondition,
+    isUsedParam,
+    setSearchParams,
+  ]);
 
   const itemsPerPage = 12;
 
@@ -78,7 +81,7 @@ export const Books = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await api.get('/categories');
+        const res = await api.get("/categories");
         setCategories(res.data);
       } catch {
         // Keep empty categories
@@ -114,13 +117,19 @@ export const Books = () => {
       let filteredData = data;
 
       if (minPrice) {
-        filteredData = filteredData.filter(b => b.price >= parseFloat(minPrice));
+        filteredData = filteredData.filter(
+          (b) => b.price >= parseFloat(minPrice),
+        );
       }
       if (maxPrice) {
-        filteredData = filteredData.filter(b => b.price <= parseFloat(maxPrice));
+        filteredData = filteredData.filter(
+          (b) => b.price <= parseFloat(maxPrice),
+        );
       }
       if (minRating > 0) {
-        filteredData = filteredData.filter(b => (b.averageRating || 0) >= minRating);
+        filteredData = filteredData.filter(
+          (b) => (b.averageRating || 0) >= minRating,
+        );
       }
 
       // Sorting
@@ -129,21 +138,35 @@ export const Books = () => {
       } else if (sortBy === "price_high") {
         filteredData.sort((a, b) => b.price - a.price);
       } else if (sortBy === "rating") {
-        filteredData.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+        filteredData.sort(
+          (a, b) => (b.averageRating || 0) - (a.averageRating || 0),
+        );
       } else if (sortBy === "newest") {
-        filteredData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        filteredData.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
       }
 
       setBooks(filteredData);
       setTotalResults(filteredData.length);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? "Failed to load books. Please try again.";
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Failed to load books. Please try again.";
       setError(msg);
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, activeCategory, activeCondition, minPrice, maxPrice, minRating, sortBy]);
+  }, [
+    searchQuery,
+    activeCategory,
+    activeCondition,
+    minPrice,
+    maxPrice,
+    minRating,
+    sortBy,
+  ]);
 
   // Fetch books when filters change
   useEffect(() => {
@@ -154,12 +177,8 @@ export const Books = () => {
   const totalPages = Math.ceil(totalResults / itemsPerPage);
   const paginatedBooks = books.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
-
-  const getCoverUrl = (book: Book) => {
-    return PLACEHOLDER_COVERS[book.title.charCodeAt(0) % PLACEHOLDER_COVERS.length];
-  };
 
   const getConditionDisplay = (book: Book) => {
     if (book.isUsed) {
@@ -185,7 +204,13 @@ export const Books = () => {
     setSearchParams({}, { replace: true });
   };
 
-  const hasActiveFilters = searchQuery || activeCategory || activeCondition || minPrice || maxPrice || minRating > 0;
+  const hasActiveFilters =
+    searchQuery ||
+    activeCategory ||
+    activeCondition ||
+    minPrice ||
+    maxPrice ||
+    minRating > 0;
 
   return (
     <div className="bg-[var(--color-brand-cream)]/30 min-h-screen pb-20">
@@ -395,7 +420,9 @@ export const Books = () => {
                   <>
                     Showing{" "}
                     <span className="text-[var(--color-brand-dark-blue)]">
-                      {totalResults > 0 ? `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalResults)}` : "0"}
+                      {totalResults > 0
+                        ? `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, totalResults)}`
+                        : "0"}
                     </span>{" "}
                     of {totalResults} results
                   </>
@@ -466,7 +493,9 @@ export const Books = () => {
           {/* Empty State */}
           {!isLoading && !error && books.length === 0 && (
             <div className="bg-white rounded-2xl p-12 text-center border border-black/5">
-              <p className="text-gray-500 mb-4">No books found matching your criteria.</p>
+              <p className="text-gray-500 mb-4">
+                No books found matching your criteria.
+              </p>
               {hasActiveFilters && (
                 <Button variant="outline" onClick={clearFilters}>
                   Clear Filters
@@ -479,7 +508,8 @@ export const Books = () => {
           {!isLoading && !error && books.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
               {paginatedBooks.map((book) => {
-                const { condition, conditionDetail } = getConditionDisplay(book);
+                const { condition, conditionDetail } =
+                  getConditionDisplay(book);
                 return (
                   <BookCard
                     key={book.id}
@@ -487,7 +517,7 @@ export const Books = () => {
                     title={book.title}
                     author={book.author}
                     price={book.price}
-                    coverUrl={getCoverUrl(book)}
+                    coverUrl={getBookCoverUrl(book)}
                     condition={condition}
                     conditionDetail={conditionDetail}
                     rating={book.averageRating}
@@ -511,13 +541,20 @@ export const Books = () => {
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter((page) => {
                   // Show first, last, and pages around current
-                  return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                  return (
+                    page === 1 ||
+                    page === totalPages ||
+                    Math.abs(page - currentPage) <= 1
+                  );
                 })
                 .map((page, idx, arr) => {
                   // Add ellipsis
                   if (idx > 0 && arr[idx - 1] !== page - 1) {
                     return (
-                      <span key={`ellipsis-${page}`} className="text-gray-400 px-2">
+                      <span
+                        key={`ellipsis-${page}`}
+                        className="text-gray-400 px-2"
+                      >
                         ...
                       </span>
                     );
@@ -538,7 +575,9 @@ export const Books = () => {
                 })}
 
               <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages, currentPage + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="p-2 border border-gray-200 rounded-lg bg-white text-gray-500 hover:bg-gray-50 hover:text-[var(--color-brand-dark-blue)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >

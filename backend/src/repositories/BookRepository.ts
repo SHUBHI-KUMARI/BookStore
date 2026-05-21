@@ -30,6 +30,8 @@ export class BookRepository {
         OR: [
           { title: { contains: filters.query, mode: 'insensitive' } },
           { author: { contains: filters.query, mode: 'insensitive' } },
+          { isbn13: { contains: filters.query, mode: 'insensitive' } },
+          { isbn10: { contains: filters.query, mode: 'insensitive' } },
         ],
       });
     }

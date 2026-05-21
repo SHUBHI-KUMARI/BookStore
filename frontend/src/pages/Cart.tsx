@@ -11,30 +11,26 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { useCart } from "../hooks/useCart";
-
-const PLACEHOLDER_COVERS = [
-  "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1614544048536-0d28caf77f41?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&q=80&w=600",
-];
+import { getBookCoverUrl } from "../utils/bookCovers";
 
 export const Cart = () => {
-  const { cart, isLoading, updateQuantity, removeFromCart, itemCount } = useCart();
+  const { cart, isLoading, updateQuantity, removeFromCart, itemCount } =
+    useCart();
   const [couponCode, setCouponCode] = useState("");
   const navigate = useNavigate();
 
-  const cartItems = cart?.items.map((item) => ({
-    id: item.id,
-    bookId: item.book.id,
-    title: item.book.title,
-    author: item.book.author,
-    price: item.book.price,
-    coverUrl: PLACEHOLDER_COVERS[item.book.title.charCodeAt(0) % PLACEHOLDER_COVERS.length],
-    condition: item.book.condition,
-    isUsed: item.book.isUsed,
-    quantity: item.quantity,
-  })) ?? [];
+  const cartItems =
+    cart?.items.map((item) => ({
+      id: item.id,
+      bookId: item.book.id,
+      title: item.book.title,
+      author: item.book.author,
+      price: item.book.price,
+      coverUrl: getBookCoverUrl(item.book),
+      condition: item.book.condition,
+      isUsed: item.book.isUsed,
+      quantity: item.quantity,
+    })) ?? [];
 
   const handleUpdateQuantity = async (bookId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -62,7 +58,7 @@ export const Cart = () => {
           </h1>
           <p className="text-[var(--color-brand-brown)] mt-2">
             {!isCartEmpty
-              ? `You have ${itemCount} item${itemCount !== 1 ? 's' : ''} in your cart.`
+              ? `You have ${itemCount} item${itemCount !== 1 ? "s" : ""} in your cart.`
               : "Your cart is currently empty."}
           </p>
         </div>
@@ -135,7 +131,9 @@ export const Cart = () => {
                             : "bg-[var(--color-brand-muted-orange)]/10 text-[var(--color-brand-muted-orange)]"
                         }`}
                       >
-                        {item.isUsed ? `Pre-owned • ${item.condition}` : item.condition}
+                        {item.isUsed
+                          ? `Pre-owned • ${item.condition}`
+                          : item.condition}
                       </span>
                     </div>
 
@@ -143,7 +141,9 @@ export const Cart = () => {
                     <div className="flex items-center justify-between w-full mt-auto pt-4 border-t border-gray-50">
                       <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50">
                         <button
-                          onClick={() => handleUpdateQuantity(item.bookId, item.quantity - 1)}
+                          onClick={() =>
+                            handleUpdateQuantity(item.bookId, item.quantity - 1)
+                          }
                           className="p-2 text-gray-500 hover:text-[var(--color-brand-dark-blue)] hover:bg-gray-100 rounded-l-lg transition-colors"
                           aria-label="Decrease quantity"
                           disabled={isLoading}
@@ -154,7 +154,9 @@ export const Cart = () => {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => handleUpdateQuantity(item.bookId, item.quantity + 1)}
+                          onClick={() =>
+                            handleUpdateQuantity(item.bookId, item.quantity + 1)
+                          }
                           className="p-2 text-gray-500 hover:text-[var(--color-brand-dark-blue)] hover:bg-gray-100 rounded-r-lg transition-colors"
                           aria-label="Increase quantity"
                           disabled={isLoading}
@@ -187,7 +189,7 @@ export const Cart = () => {
                 <div className="space-y-4 mb-6 text-sm">
                   <div className="flex justify-between text-gray-600">
                     <span>
-                      Subtotal ({itemCount} item{itemCount !== 1 ? 's' : ''})
+                      Subtotal ({itemCount} item{itemCount !== 1 ? "s" : ""})
                     </span>
                     <span className="font-medium text-[var(--color-brand-dark-blue)]">
                       ${subtotal.toFixed(2)}

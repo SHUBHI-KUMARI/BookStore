@@ -6,6 +6,13 @@ export interface Book {
   author: string;
   price: number;
   stock: number;
+  image?: string | null;
+  isbn13?: string | null;
+  isbn10?: string | null;
+  publisher?: string | null;
+  language?: string | null;
+  publishedAt?: string | null;
+  description?: string | null;
   isUsed: boolean;
   condition: "NEW" | "GOOD" | "FAIR" | "POOR";
   approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
@@ -63,11 +70,11 @@ export const bookService = {
 
   async approveBook(
     id: string,
-    status: "APPROVED" | "REJECTED"
+    status: "APPROVED" | "REJECTED",
   ): Promise<{ book: Book; message: string }> {
     const res = await api.patch<{ book: Book; message: string }>(
       `/books/admin/${id}/approve`,
-      { status }
+      { status },
     );
     return res.data;
   },

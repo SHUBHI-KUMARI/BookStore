@@ -8,7 +8,16 @@ export class UserController {
     try {
       const user = await database.prisma.user.findUnique({
         where: { id: req.user?.userId },
-        select: { id: true, name: true, email: true, role: true, createdAt: true, phone: true, address: true, age: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          phone: true,
+          address: true,
+          age: true,
+        },
       });
       if (!user) {
         res.status(404).json({ message: 'User not found' });
@@ -26,14 +35,22 @@ export class UserController {
       const { name, email, phone, address, age } = req.body;
       const user = await database.prisma.user.update({
         where: { id: req.user?.userId },
-        data: { 
-          name, 
-          email, 
-          phone, 
-          address, 
-          age: age ? Number(age) : null 
+        data: {
+          name,
+          email,
+          phone,
+          address,
+          age: age ? Number(age) : null,
         },
-        select: { id: true, name: true, email: true, role: true, phone: true, address: true, age: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          phone: true,
+          address: true,
+          age: true,
+        },
       });
       res.json(user);
     } catch (e) {

@@ -38,21 +38,27 @@ export const UserDashboard = () => {
   const [, setSaved] = useState<unknown[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", address: "", age: "" });
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    age: "",
+  });
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
         if (activeTab === "profile") {
-          const data = await userService.getUserDetails() as UserProfile;
+          const data = (await userService.getUserDetails()) as UserProfile;
           setProfile(data);
-          setEditForm({ 
-            name: data.name || "", 
+          setEditForm({
+            name: data.name || "",
             email: data.email || "",
             phone: data.phone || "",
             address: data.address || "",
-            age: data.age?.toString() || ""
+            age: data.age?.toString() || "",
           });
         } else if (activeTab === "orders") {
           const data = await userService.getUserOrders();
@@ -80,7 +86,6 @@ export const UserDashboard = () => {
     const updated = await userService.getUserDetails();
     setProfile(updated as UserProfile);
   };
-
 
   const TABS = [
     { id: "profile", label: "Profile Overview", icon: User },
@@ -171,7 +176,11 @@ export const UserDashboard = () => {
                     Active Listings
                   </p>
                   <p className="text-2xl font-bold text-[var(--color-brand-dark-blue)]">
-                    {listings.filter((l: any) => l.status === "Approved").length}
+                    {
+                      listings.filter(
+                        (listing) => listing.approvalStatus === "APPROVED",
+                      ).length
+                    }
                   </p>
                 </div>
               </div>
@@ -196,24 +205,36 @@ export const UserDashboard = () => {
                   Personal Information
                 </h2>
                 {!isEditing ? (
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                  >
                     <Settings className="w-4 h-4 mr-2" /> Edit
                   </Button>
                 ) : (
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => {
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
                         setIsEditing(false);
-                        setEditForm({ 
-                          name: profile?.name as string || "", 
-                          email: profile?.email as string || "",
-                          phone: profile?.phone as string || "",
-                          address: profile?.address as string || "",
-                          age: profile?.age?.toString() || ""
+                        setEditForm({
+                          name: (profile?.name as string) || "",
+                          email: (profile?.email as string) || "",
+                          phone: (profile?.phone as string) || "",
+                          address: (profile?.address as string) || "",
+                          age: profile?.age?.toString() || "",
                         });
-                      }}>
+                      }}
+                    >
                       Cancel
                     </Button>
-                    <Button variant="primary" size="sm" onClick={handleUpdateProfile}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleUpdateProfile}
+                    >
                       Save
                     </Button>
                   </div>
@@ -224,13 +245,37 @@ export const UserDashboard = () => {
                   <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">
                     Full Name
                   </label>
-                  {!isEditing ? <p className="font-medium text-[var(--color-brand-dark-blue)] mt-1">{profile?.name || user?.name || "User"}</p> : <input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="border p-1 mt-1 rounded" />}
+                  {!isEditing ? (
+                    <p className="font-medium text-[var(--color-brand-dark-blue)] mt-1">
+                      {profile?.name || user?.name || "User"}
+                    </p>
+                  ) : (
+                    <input
+                      value={editForm.name}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, name: e.target.value })
+                      }
+                      className="border p-1 mt-1 rounded"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">
                     Email Address
                   </label>
-                  {!isEditing ? <p className="font-medium text-[var(--color-brand-dark-blue)] mt-1">{profile?.email || user?.email || ""}</p> : <input value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="border p-1 mt-1 rounded" />}
+                  {!isEditing ? (
+                    <p className="font-medium text-[var(--color-brand-dark-blue)] mt-1">
+                      {profile?.email || user?.email || ""}
+                    </p>
+                  ) : (
+                    <input
+                      value={editForm.email}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, email: e.target.value })
+                      }
+                      className="border p-1 mt-1 rounded"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 uppercase font-bold tracking-wider">
@@ -241,10 +286,12 @@ export const UserDashboard = () => {
                       {profile?.phone || "Not provided"}
                     </p>
                   ) : (
-                    <input 
-                      value={editForm.phone} 
-                      onChange={e => setEditForm({...editForm, phone: e.target.value})} 
-                      className="border p-1 mt-1 rounded w-full" 
+                    <input
+                      value={editForm.phone}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, phone: e.target.value })
+                      }
+                      className="border p-1 mt-1 rounded w-full"
                       placeholder="+1 (555) 123-4567"
                     />
                   )}
@@ -258,11 +305,13 @@ export const UserDashboard = () => {
                       {profile?.age || "Not provided"}
                     </p>
                   ) : (
-                    <input 
+                    <input
                       type="number"
-                      value={editForm.age} 
-                      onChange={e => setEditForm({...editForm, age: e.target.value})} 
-                      className="border p-1 mt-1 rounded w-full" 
+                      value={editForm.age}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, age: e.target.value })
+                      }
+                      className="border p-1 mt-1 rounded w-full"
                       placeholder="e.g. 25"
                     />
                   )}
@@ -276,10 +325,12 @@ export const UserDashboard = () => {
                       {profile?.address || "Not provided"}
                     </p>
                   ) : (
-                    <textarea 
-                      value={editForm.address} 
-                      onChange={e => setEditForm({...editForm, address: e.target.value})} 
-                      className="border p-2 mt-1 rounded w-full min-h-[80px]" 
+                    <textarea
+                      value={editForm.address}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, address: e.target.value })
+                      }
+                      className="border p-2 mt-1 rounded w-full min-h-[80px]"
                       placeholder="123 Market St, Apt 4B&#10;San Francisco, CA 94105"
                     />
                   )}
@@ -319,7 +370,8 @@ export const UserDashboard = () => {
                           #{order.id.slice(0, 8).toUpperCase()}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          {new Date(order.createdAt).toLocaleDateString()} • {order.items?.length ?? 0} Items
+                          {new Date(order.createdAt).toLocaleDateString()} •{" "}
+                          {order.items?.length ?? 0} Items
                         </p>
                       </div>
                     </div>
@@ -378,7 +430,8 @@ export const UserDashboard = () => {
                       <span
                         className={`px-2.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider ${listing.approvalStatus === "APPROVED" ? "bg-emerald-50 text-emerald-600" : listing.approvalStatus === "PENDING" ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600"}`}
                       >
-                        {listing.approvalStatus ?? (listing.isUsed ? "PENDING" : "APPROVED")}
+                        {listing.approvalStatus ??
+                          (listing.isUsed ? "PENDING" : "APPROVED")}
                       </span>
                     </div>
                   </div>
@@ -413,7 +466,8 @@ export const UserDashboard = () => {
                       {review.book?.title ?? "Unknown Book"}
                     </h3>
                     <span className="text-xs text-gray-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {new Date(review.createdAt).toLocaleDateString()}
+                      <Clock className="w-3 h-3" />{" "}
+                      {new Date(review.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="flex gap-1 text-yellow-400 mb-3">
@@ -421,7 +475,9 @@ export const UserDashboard = () => {
                     {"☆".repeat(5 - review.rating)}
                   </div>
                   {review.comment && (
-                    <p className="text-sm text-gray-600 italic">"{review.comment}"</p>
+                    <p className="text-sm text-gray-600 italic">
+                      "{review.comment}"
+                    </p>
                   )}
                 </div>
               ))

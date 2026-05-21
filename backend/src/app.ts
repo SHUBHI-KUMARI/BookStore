@@ -1,4 +1,5 @@
 import express, { Application, Request, Response } from 'express';
+import type { Server } from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import database from './config/database';
@@ -36,9 +37,12 @@ class App {
           'http://localhost:5173',
           'http://localhost:3000',
           'https://book-store-gamma-three.vercel.app',
+          'https://fictional-space-journey-jjqwxp59qrx4cq6wq-5173.app.github.dev',
+          'https://fictional-space-journey-jjqwxp59qrx4cq6wq-3000.app.github.dev',
+          'https://fictional-space-journey-jjqwxp59qrx4cq6wq-5173.app.github.dev'
         ],
         credentials: true,
-      })
+      }),
     );
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
@@ -60,10 +64,11 @@ class App {
     this.app.use('/api/user', userRoutes);
   }
 
-  public listen(): void {
-    this.app.listen(this.port, () => {
+  public listen(): Server {
+    const server = this.app.listen(this.port, () => {
       console.log(`Server listening on port ${this.port}`);
     });
+    return server;
   }
 }
 

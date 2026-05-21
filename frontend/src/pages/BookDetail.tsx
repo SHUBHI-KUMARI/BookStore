@@ -16,6 +16,7 @@ import { bookService, type Book } from "../services/bookService";
 import { useCart } from "../hooks/useCart";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
+import { getBookCoverUrl } from "../utils/bookCovers";
 
 const CONDITION_LABEL: Record<string, string> = {
   NEW: "New",
@@ -30,13 +31,6 @@ const CONDITION_COLOR: Record<string, string> = {
   FAIR: "bg-amber-50 text-amber-600",
   POOR: "bg-red-50 text-red-500",
 };
-
-const PLACEHOLDER_COVERS = [
-  "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1614544048536-0d28caf77f41?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&q=80&w=600",
-];
 
 function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
   return (
@@ -141,8 +135,7 @@ export const BookDetail = () => {
     );
   }
 
-  const coverUrl =
-    PLACEHOLDER_COVERS[book.title.charCodeAt(0) % PLACEHOLDER_COVERS.length];
+  const coverUrl = getBookCoverUrl(book);
   const avgRating = book.averageRating ?? 0;
   const reviewCount = book.reviews?.length ?? 0;
 
@@ -246,7 +239,8 @@ export const BookDetail = () => {
                         <span className="font-bold text-emerald-600">
                           In Stock
                         </span>
-                        {" — "}{book.stock} available
+                        {" — "}
+                        {book.stock} available
                       </>
                     ) : (
                       <span className="font-bold text-red-500">

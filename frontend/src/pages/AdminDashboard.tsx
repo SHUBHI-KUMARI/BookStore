@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Users,
   BookOpen,
@@ -46,18 +46,7 @@ export const AdminDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  useEffect(() => {
-    loadOverviewData();
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === "orders") loadOrders();
-    if (activeTab === "approvals") loadPendingBooks();
-    if (activeTab === "users") loadUsers();
-    if (activeTab === "books") loadAllBooks();
-  }, [activeTab]);
-
-  const loadOverviewData = async () => {
+  const loadOverviewData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [ordersData, booksData, usersData] = await Promise.all([
@@ -69,7 +58,7 @@ export const AdminDashboard = () => {
         .filter((o) => o.paymentStatus === "COMPLETED")
         .reduce((sum, o) => sum + o.totalAmount, 0);
       const pendingBooks = booksData.filter(
-        (b) => b.isUsed && b.approvalStatus === "PENDING"
+        (b) => b.isUsed && b.approvalStatus === "PENDING",
       ).length;
       setStats({
         totalSales,
@@ -79,13 +68,17 @@ export const AdminDashboard = () => {
         pendingApproval: pendingBooks,
       });
       setOrders(ordersData.slice(0, 5));
-      setPendingBooks(booksData.filter((b) => b.isUsed && b.approvalStatus === "PENDING").slice(0, 5));
+      setPendingBooks(
+        booksData
+          .filter((b) => b.isUsed && b.approvalStatus === "PENDING")
+          .slice(0, 5),
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await adminService.getAllOrders();
@@ -93,9 +86,9 @@ export const AdminDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const loadPendingBooks = async () => {
+  const loadPendingBooks = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await adminService.getPendingBooks();
@@ -103,9 +96,9 @@ export const AdminDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await adminService.getAllUsers();
@@ -113,9 +106,9 @@ export const AdminDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const loadAllBooks = async () => {
+  const loadAllBooks = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await adminService.getAllBooks();
@@ -123,9 +116,23 @@ export const AdminDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleApproveBook = async (id: string, status: "APPROVED" | "REJECTED") => {
+  useEffect(() => {
+    void loadOverviewData();
+  }, [loadOverviewData]);
+
+  useEffect(() => {
+    if (activeTab === "orders") void loadOrders();
+    if (activeTab === "approvals") void loadPendingBooks();
+    if (activeTab === "users") void loadUsers();
+    if (activeTab === "books") void loadAllBooks();
+  }, [activeTab, loadOrders, loadPendingBooks, loadUsers, loadAllBooks]);
+
+  const handleApproveBook = async (
+    id: string,
+    status: "APPROVED" | "REJECTED",
+  ) => {
     try {
       await adminService.approveBook(id, status);
       await loadPendingBooks();
@@ -135,7 +142,10 @@ export const AdminDashboard = () => {
     }
   };
 
-  const handleUpdateOrderStatus = async (id: string, status: Order["status"]) => {
+  const handleUpdateOrderStatus = async (
+    id: string,
+    status: Order["status"],
+  ) => {
     try {
       await adminService.updateOrderStatus(id, status);
       await loadOrders();
@@ -222,29 +232,47 @@ export const AdminDashboard = () => {
                 <div className="col-span-4 flex justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
                 </div>
-              ) : stats ? [
-                { title: "Total Sales", value: `$${stats.totalSales.toFixed(0)}`, icon: BarChart3 },
-                { title: "Active Users", value: String(stats.activeUsers), icon: Users },
-                { title: "Total Books", value: String(stats.totalBooks), icon: BookOpen },
-                { title: "Pending Approval", value: String(stats.pendingApproval), icon: CheckCircle },
-              ].map((stat, i) => (
-                <div
-                  key={i}
-                  className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-[var(--color-brand-cream)] flex items-center justify-center">
-                      <stat.icon className="w-5 h-5 text-[var(--color-brand-muted-orange)]" />
+              ) : stats ? (
+                [
+                  {
+                    title: "Total Sales",
+                    value: `$${stats.totalSales.toFixed(0)}`,
+                    icon: BarChart3,
+                  },
+                  {
+                    title: "Active Users",
+                    value: String(stats.activeUsers),
+                    icon: Users,
+                  },
+                  {
+                    title: "Total Books",
+                    value: String(stats.totalBooks),
+                    icon: BookOpen,
+                  },
+                  {
+                    title: "Pending Approval",
+                    value: String(stats.pendingApproval),
+                    icon: CheckCircle,
+                  },
+                ].map((stat, i) => (
+                  <div
+                    key={i}
+                    className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-[var(--color-brand-cream)] flex items-center justify-center">
+                        <stat.icon className="w-5 h-5 text-[var(--color-brand-muted-orange)]" />
+                      </div>
                     </div>
+                    <p className="text-gray-500 font-medium text-sm mb-1">
+                      {stat.title}
+                    </p>
+                    <h3 className="text-3xl font-black text-[var(--color-brand-dark-blue)] tracking-tight">
+                      {stat.value}
+                    </h3>
                   </div>
-                  <p className="text-gray-500 font-medium text-sm mb-1">
-                    {stat.title}
-                  </p>
-                  <h3 className="text-3xl font-black text-[var(--color-brand-dark-blue)] tracking-tight">
-                    {stat.value}
-                  </h3>
-                </div>
-              )) : null}
+                ))
+              ) : null}
             </div>
 
             {/* Content Grid */}
@@ -255,13 +283,18 @@ export const AdminDashboard = () => {
                   <h3 className="font-bold text-[var(--color-brand-dark-blue)]">
                     Needs Approval
                   </h3>
-                  <button onClick={() => setActiveTab("approvals")} className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline">
+                  <button
+                    onClick={() => setActiveTab("approvals")}
+                    className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline"
+                  >
                     View All
                   </button>
                 </div>
                 <div className="p-0 overflow-x-auto">
                   {pendingBooks.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500 text-sm">No pending listings</div>
+                    <div className="p-6 text-center text-gray-500 text-sm">
+                      No pending listings
+                    </div>
                   ) : (
                     <table className="w-full text-sm text-left">
                       <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
@@ -291,14 +324,18 @@ export const AdminDashboard = () => {
                                   size="sm"
                                   variant="outline"
                                   className="h-8 px-3 text-xs w-auto"
-                                  onClick={() => handleApproveBook(item.id, "REJECTED")}
+                                  onClick={() =>
+                                    handleApproveBook(item.id, "REJECTED")
+                                  }
                                 >
                                   Reject
                                 </Button>
                                 <Button
                                   size="sm"
                                   className="h-8 px-3 text-xs w-auto bg-emerald-600 hover:bg-emerald-700"
-                                  onClick={() => handleApproveBook(item.id, "APPROVED")}
+                                  onClick={() =>
+                                    handleApproveBook(item.id, "APPROVED")
+                                  }
                                 >
                                   Approve
                                 </Button>
@@ -318,13 +355,18 @@ export const AdminDashboard = () => {
                   <h3 className="font-bold text-[var(--color-brand-dark-blue)]">
                     Recent Orders
                   </h3>
-                  <button onClick={() => setActiveTab("orders")} className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline">
+                  <button
+                    onClick={() => setActiveTab("orders")}
+                    className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline"
+                  >
                     View All
                   </button>
                 </div>
                 <div className="p-0 overflow-x-auto">
                   {orders.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500 text-sm">No orders yet</div>
+                    <div className="p-6 text-center text-gray-500 text-sm">
+                      No orders yet
+                    </div>
                   ) : (
                     <table className="w-full text-sm text-left">
                       <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
@@ -375,7 +417,9 @@ export const AdminDashboard = () => {
         {/* Fallback for other tabs */}
         {activeTab === "books" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">All Books</h2>
+            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">
+              All Books
+            </h2>
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
@@ -399,12 +443,18 @@ export const AdminDashboard = () => {
                   <tbody className="divide-y divide-gray-100">
                     {allBooks.map((book) => (
                       <tr key={book.id} className="hover:bg-gray-50/50">
-                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">{book.title}</td>
-                        <td className="px-5 py-4 text-gray-600">{book.author}</td>
+                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">
+                          {book.title}
+                        </td>
+                        <td className="px-5 py-4 text-gray-600">
+                          {book.author}
+                        </td>
                         <td className="px-5 py-4">${book.price.toFixed(2)}</td>
                         <td className="px-5 py-4">{book.stock}</td>
                         <td className="px-5 py-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${book.isUsed ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]" : "bg-[var(--color-brand-muted-orange)]/10 text-[var(--color-brand-muted-orange)]"}`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-bold ${book.isUsed ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]" : "bg-[var(--color-brand-muted-orange)]/10 text-[var(--color-brand-muted-orange)]"}`}
+                          >
                             {book.isUsed ? "Used" : "New"}
                           </span>
                         </td>
@@ -419,7 +469,9 @@ export const AdminDashboard = () => {
 
         {activeTab === "approvals" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">Pending Listings</h2>
+            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">
+              Pending Listings
+            </h2>
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
@@ -443,15 +495,38 @@ export const AdminDashboard = () => {
                     {pendingBooks.map((book) => (
                       <tr key={book.id} className="hover:bg-gray-50/50">
                         <td className="px-5 py-4">
-                          <p className="font-semibold text-[var(--color-brand-dark-blue)]">{book.title}</p>
-                          <p className="text-gray-500 text-xs">{book.condition} • {book.author}</p>
+                          <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                            {book.title}
+                          </p>
+                          <p className="text-gray-500 text-xs">
+                            {book.condition} • {book.author}
+                          </p>
                         </td>
-                        <td className="px-5 py-4 text-gray-600">{book.seller?.name ?? "Unknown"}</td>
+                        <td className="px-5 py-4 text-gray-600">
+                          {book.seller?.name ?? "Unknown"}
+                        </td>
                         <td className="px-5 py-4">${book.price.toFixed(2)}</td>
                         <td className="px-5 py-4 text-right">
                           <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" className="h-8 px-3 text-xs" onClick={() => handleApproveBook(book.id, "REJECTED")}>Reject</Button>
-                            <Button size="sm" className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApproveBook(book.id, "APPROVED")}>Approve</Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-3 text-xs"
+                              onClick={() =>
+                                handleApproveBook(book.id, "REJECTED")
+                              }
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-700"
+                              onClick={() =>
+                                handleApproveBook(book.id, "APPROVED")
+                              }
+                            >
+                              Approve
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -465,7 +540,9 @@ export const AdminDashboard = () => {
 
         {activeTab === "orders" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">All Orders</h2>
+            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">
+              All Orders
+            </h2>
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
@@ -490,23 +567,38 @@ export const AdminDashboard = () => {
                   <tbody className="divide-y divide-gray-100">
                     {orders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50/50">
-                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">#{order.id.slice(0, 8).toUpperCase()}</td>
-                        <td className="px-5 py-4 text-gray-600">{order.user?.name ?? "Unknown"}</td>
-                        <td className="px-5 py-4">${order.totalAmount.toFixed(2)}</td>
+                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">
+                          #{order.id.slice(0, 8).toUpperCase()}
+                        </td>
+                        <td className="px-5 py-4 text-gray-600">
+                          {order.user?.name ?? "Unknown"}
+                        </td>
                         <td className="px-5 py-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${order.paymentStatus === "COMPLETED" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                          ${order.totalAmount.toFixed(2)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-bold ${order.paymentStatus === "COMPLETED" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}
+                          >
                             {order.paymentStatus}
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${order.status === "DELIVERED" ? "bg-emerald-50 text-emerald-600" : order.status === "SHIPPED" ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"}`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-bold ${order.status === "DELIVERED" ? "bg-emerald-50 text-emerald-600" : order.status === "SHIPPED" ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"}`}
+                          >
                             {order.status}
                           </span>
                         </td>
                         <td className="px-5 py-4">
                           <select
                             value={order.status}
-                            onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as Order["status"])}
+                            onChange={(e) =>
+                              handleUpdateOrderStatus(
+                                order.id,
+                                e.target.value as Order["status"],
+                              )
+                            }
                             className="text-xs border rounded px-2 py-1"
                           >
                             <option value="PENDING">Pending</option>
@@ -526,7 +618,9 @@ export const AdminDashboard = () => {
 
         {activeTab === "users" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">All Users</h2>
+            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">
+              All Users
+            </h2>
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
@@ -549,14 +643,20 @@ export const AdminDashboard = () => {
                   <tbody className="divide-y divide-gray-100">
                     {users.map((u) => (
                       <tr key={u.id} className="hover:bg-gray-50/50">
-                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">{u.name}</td>
+                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">
+                          {u.name}
+                        </td>
                         <td className="px-5 py-4 text-gray-600">{u.email}</td>
                         <td className="px-5 py-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${u.role === "ADMIN" ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]" : "bg-gray-100 text-gray-600"}`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-bold ${u.role === "ADMIN" ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]" : "bg-gray-100 text-gray-600"}`}
+                          >
                             {u.role}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                        <td className="px-5 py-4 text-gray-500">
+                          {new Date(u.createdAt).toLocaleDateString()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

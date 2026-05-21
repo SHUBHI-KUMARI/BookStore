@@ -15,27 +15,31 @@ import { BookCard } from "../components/books/BookCard";
 import { Link, useNavigate } from "react-router-dom";
 import { bookService, type Book } from "../services/bookService";
 import api from "../services/api";
+import { getBookCoverUrl } from "../utils/bookCovers";
 
 interface Category {
   id: string;
   name: string;
 }
 
-const PLACEHOLDER_COVERS = [
-  "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1614544048536-0d28caf77f41?auto=format&fit=crop&q=80&w=600",
-  "https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&q=80&w=600",
-];
+const CATEGORY_ICONS: Record<string, { icon: typeof BookOpen; color: string }> =
+  {
+    "Fiction & Literature": {
+      icon: BookOpen,
+      color: "bg-blue-50 text-blue-600",
+    },
+    "Science & Tech": {
+      icon: ShieldCheck,
+      color: "bg-emerald-50 text-emerald-600",
+    },
+    "Business & Economy": { icon: Users, color: "bg-amber-50 text-amber-600" },
+    "History & Bio": { icon: Clock, color: "bg-purple-50 text-purple-600" },
+  };
 
-const CATEGORY_ICONS: Record<string, { icon: typeof BookOpen; color: string }> = {
-  "Fiction & Literature": { icon: BookOpen, color: "bg-blue-50 text-blue-600" },
-  "Science & Tech": { icon: ShieldCheck, color: "bg-emerald-50 text-emerald-600" },
-  "Business & Economy": { icon: Users, color: "bg-amber-50 text-amber-600" },
-  "History & Bio": { icon: Clock, color: "bg-purple-50 text-purple-600" },
-};
-
-const getDefaultCategoryIcon = () => ({ icon: BookOpen, color: "bg-gray-50 text-gray-600" });
+const getDefaultCategoryIcon = () => ({
+  icon: BookOpen,
+  color: "bg-gray-50 text-gray-600",
+});
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -53,7 +57,7 @@ export const Home = () => {
       setError("");
       try {
         // Fetch categories
-        const categoriesRes = await api.get('/categories');
+        const categoriesRes = await api.get("/categories");
         setCategories(categoriesRes.data);
 
         // Fetch new books (not used)
@@ -64,8 +68,9 @@ export const Home = () => {
         const usedBooksData = await bookService.getAll({ isUsed: true });
         setUsedBooks(usedBooksData.slice(0, 4));
       } catch (err: unknown) {
-        const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-          ?? "Failed to load books. Please try again.";
+        const msg =
+          (err as { response?: { data?: { message?: string } } })?.response
+            ?.data?.message ?? "Failed to load books. Please try again.";
         setError(msg);
       } finally {
         setIsLoading(false);
@@ -79,10 +84,6 @@ export const Home = () => {
     if (searchQuery.trim()) {
       navigate(`/books?q=${encodeURIComponent(searchQuery.trim())}`);
     }
-  };
-
-  const getCoverUrl = (book: Book) => {
-    return PLACEHOLDER_COVERS[book.title.charCodeAt(0) % PLACEHOLDER_COVERS.length];
   };
 
   const getConditionDisplay = (book: Book) => {
@@ -258,7 +259,8 @@ export const Home = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {categories.slice(0, 4).map((cat) => {
-                const { icon: Icon, color } = CATEGORY_ICONS[cat.name] || getDefaultCategoryIcon();
+                const { icon: Icon, color } =
+                  CATEGORY_ICONS[cat.name] || getDefaultCategoryIcon();
                 return (
                   <Link
                     key={cat.id}
@@ -273,7 +275,9 @@ export const Home = () => {
                     <h3 className="text-xl font-bold text-[var(--color-brand-dark-blue)] mb-2">
                       {cat.name}
                     </h3>
-                    <p className="text-gray-500 font-medium">Browse Collection</p>
+                    <p className="text-gray-500 font-medium">
+                      Browse Collection
+                    </p>
                   </Link>
                 );
               })}
@@ -313,7 +317,8 @@ export const Home = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {popularBooks.map((book) => {
-                const { condition, conditionDetail } = getConditionDisplay(book);
+                const { condition, conditionDetail } =
+                  getConditionDisplay(book);
                 return (
                   <BookCard
                     key={book.id}
@@ -321,7 +326,7 @@ export const Home = () => {
                     title={book.title}
                     author={book.author}
                     price={book.price}
-                    coverUrl={getCoverUrl(book)}
+                    coverUrl={getBookCoverUrl(book)}
                     condition={condition}
                     conditionDetail={conditionDetail}
                     rating={book.averageRating}
@@ -368,7 +373,8 @@ export const Home = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:-mr-4 pr-4 pb-8 overflow-x-auto snap-x">
               {usedBooks.map((book) => {
-                const { condition, conditionDetail } = getConditionDisplay(book);
+                const { condition, conditionDetail } =
+                  getConditionDisplay(book);
                 return (
                   <div key={book.id} className="snap-start min-w-[280px]">
                     <BookCard
@@ -376,7 +382,7 @@ export const Home = () => {
                       title={book.title}
                       author={book.author}
                       price={book.price}
-                      coverUrl={getCoverUrl(book)}
+                      coverUrl={getBookCoverUrl(book)}
                       condition={condition}
                       conditionDetail={conditionDetail}
                       rating={book.averageRating}

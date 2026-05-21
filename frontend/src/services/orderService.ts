@@ -36,10 +36,13 @@ export const orderService = {
     return res.data;
   },
 
-  async payOrder(orderId: string, paymentData: PaymentData): Promise<{ message: string }> {
+  async payOrder(
+    orderId: string,
+    paymentData: PaymentData,
+  ): Promise<{ message: string }> {
     const res = await api.post<{ message: string }>(
       `/orders/${orderId}/pay`,
-      paymentData
+      paymentData,
     );
     return res.data;
   },
@@ -58,7 +61,7 @@ export const orderService = {
   // Admin only
   async updateOrderStatus(
     orderId: string,
-    status: Order["status"]
+    status: Order["status"],
   ): Promise<Order> {
     const res = await api.put<Order>(`/orders/${orderId}/status`, { status });
     return res.data;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   UploadCloud,
   CheckCircle2,
@@ -13,9 +13,7 @@ import { Button } from "../components/ui/Button";
 import { bookService } from "../services/bookService";
 import api from "../services/api";
 
-const CATEGORY_OPTIONS = [
-  { value: "", label: "Select a category" },
-];
+const CATEGORY_OPTIONS = [{ value: "", label: "Select a category" }];
 
 const CONDITION_OPTIONS = [
   { value: "NEW", label: "New" },
@@ -39,14 +37,9 @@ export const Sell = () => {
   });
   const [error, setError] = useState("");
 
-  // Load categories on mount
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
-      const res = await api.get('/categories');
+      const res = await api.get("/categories");
       setCategories([
         { value: "", label: "Select a category" },
         ...res.data.map((c: { id: string; name: string }) => ({
@@ -57,7 +50,12 @@ export const Sell = () => {
     } catch {
       // Keep default empty option
     }
-  };
+  }, []);
+
+  // Load categories on mount
+  useEffect(() => {
+    void fetchCategories();
+  }, [fetchCategories]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -84,8 +82,9 @@ export const Sell = () => {
       });
       setIsSuccess(true);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? "Failed to submit listing. Please try again.";
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Failed to submit listing. Please try again.";
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -106,7 +105,21 @@ export const Sell = () => {
             Your book has been sent for review. Once approved by our team, it
             will be live on the marketplace.
           </p>
-          <Button onClick={() => { setIsSuccess(false); setFormData({ title: "", author: "", categoryId: "", condition: "GOOD", price: "", description: "", contact: "" }); }} className="w-full">
+          <Button
+            onClick={() => {
+              setIsSuccess(false);
+              setFormData({
+                title: "",
+                author: "",
+                categoryId: "",
+                condition: "GOOD",
+                price: "",
+                description: "",
+                contact: "",
+              });
+            }}
+            className="w-full"
+          >
             List Another Book
           </Button>
         </div>
