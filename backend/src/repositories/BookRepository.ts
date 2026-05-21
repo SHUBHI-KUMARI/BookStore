@@ -40,7 +40,11 @@ export class BookRepository {
 
     return database.prisma.book.findMany({
       where,
-      include: { category: true, seller: true },
+      include: {
+        category: true,
+        seller: true,
+        catalogBook: { select: { image: true, imageOriginal: true } },
+      },
     });
   }
 
@@ -49,6 +53,7 @@ export class BookRepository {
       where: { id },
       include: {
         category: true,
+        catalogBook: { select: { image: true, imageOriginal: true } },
         seller: { select: { id: true, name: true, email: true } },
         reviews: {
           select: {

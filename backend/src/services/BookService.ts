@@ -9,13 +9,27 @@ export class BookService {
     this.bookRepository = new BookRepository();
   }
 
+  private resolveImage(book: {
+    image?: string | null;
+    catalogBook?: { image?: string | null; imageOriginal?: string | null } | null;
+  }) {
+    return book.image ?? book.catalogBook?.imageOriginal ?? book.catalogBook?.image ?? null;
+  }
+
   public async getAllBooks(filters?: {
     query?: string;
     categoryId?: string;
     condition?: BookCondition;
     isUsed?: boolean;
   }) {
-    return this.bookRepository.findAll(filters);
+    const books = await this.bookRepository.findAll(filters);
+    return books.map((book) => {
+      const { catalogBook, ...rest } = book;
+      return {
+        ...rest,
+        image: this.resolveImage(book),
+      };
+    });
   }
 
   public async getBookById(id: string) {
@@ -29,8 +43,11 @@ export class BookService {
       averageRating = Number((sum / book.reviews.length).toFixed(1));
     }
 
+    const { catalogBook, ...rest } = book;
+
     return {
-      ...book,
+      ...rest,
+      image: this.resolveImage(book),
       averageRating,
     };
   }
