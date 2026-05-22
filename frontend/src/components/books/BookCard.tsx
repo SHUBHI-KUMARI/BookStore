@@ -49,24 +49,24 @@ export const BookCard = ({
   };
 
   return (
-    <div className="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full ring-1 ring-black/5">
+    <div className="group bg-white rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full ring-1 ring-slate-900/5">
       {/* Cover Image Container */}
       <Link
         to={`/books/${id}`}
-        className="relative h-64 w-full bg-gray-50 flex items-center justify-center p-6 overflow-hidden"
+        className="relative h-64 w-full bg-slate-50/50 flex items-center justify-center p-6 overflow-hidden border-b border-slate-50"
       >
         {/* Badges */}
         <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
           <Badge
             variant={condition === "NEW" ? "warning" : "primary"}
-            className="uppercase tracking-wider"
+            className="uppercase tracking-wider text-[10px]"
           >
             {condition}
           </Badge>
           {condition === "USED" && conditionDetail && (
             <Badge
               variant="neutral"
-              className="uppercase tracking-wider bg-white/90 backdrop-blur-sm shadow-sm border-gray-200"
+              className="uppercase tracking-wider bg-white/90 backdrop-blur-sm shadow-sm border-slate-200 text-[10px]"
             >
               {conditionDetail}
             </Badge>
@@ -77,51 +77,52 @@ export const BookCard = ({
         <img
           src={coverUrl}
           alt={`Cover of ${title}`}
-          className="h-full w-auto object-contain drop-shadow-md group-hover:scale-110 transition-transform duration-500 ease-out"
+          className="h-full w-auto object-contain drop-shadow-xl group-hover:scale-105 group-hover:-rotate-2 transition-transform duration-500 ease-out"
           loading="lazy"
         />
       </Link>
 
       {/* Content */}
-      <div className="p-5 flex flex-col flex-grow">
+      <div className="p-6 flex flex-col flex-grow">
+        {/* Title & Author */}
+        <p className="text-sm text-slate-500 mb-2 font-medium tracking-wide">
+          {author}
+        </p>
+        <Link
+          to={`/books/${id}`}
+          className="group-hover:text-amber-600 transition-colors inline-block mb-3"
+        >
+          <h3 className="font-serif font-bold text-xl text-slate-900 leading-snug line-clamp-2 min-h-[3rem]">
+            {title}
+          </h3>
+        </Link>
+
         {/* Rating */}
-        <div className="flex items-center gap-1 mb-3">
+        <div className="flex items-center gap-1 mb-4">
           <div className="flex">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star
                 key={i}
-                className={`h-3.5 w-3.5 ${i < (rating || 5) ? "text-yellow-400 fill-yellow-400" : "text-gray-200"}`}
+                className={`h-4 w-4 ${i < (rating || 5) ? "text-amber-400 fill-amber-400" : "text-slate-200"}`}
               />
             ))}
           </div>
-          <span className="text-xs text-gray-500 ml-1.5 font-medium">
-            ({title.length * 3 + 12})
+          <span className="text-xs text-slate-400 ml-2 font-medium">
+            ({title.length * 3 + 12} reviews)
           </span>
         </div>
 
-        {/* Title & Author */}
-        <Link
-          to={`/books/${id}`}
-          className="group-hover:text-[var(--color-brand-muted-orange)] transition-colors inline-block"
-        >
-          <h3 className="font-bold text-lg text-[var(--color-brand-dark-blue)] leading-snug line-clamp-2 min-h-[3.2rem] mb-1.5">
-            {title}
-          </h3>
-        </Link>
-        <p className="text-sm text-gray-500 mb-4 font-medium">{author}</p>
-
         {/* Spacer to push pricing down */}
-        <div className="flex-grow min-h-2" />
+        <div className="flex-grow" />
 
         {/* Price & Action */}
-        <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-          <span className="text-2xl font-bold tracking-tight text-[var(--color-brand-dark-blue)]">
+        <div className="flex items-center justify-between border-t border-slate-100 pt-5 mt-4">
+          <span className="text-2xl font-bold tracking-tight text-slate-900">
             ${price.toFixed(2)}
           </span>
           <Button
             size="sm"
-            variant="primary"
-            className="rounded-full px-5 shadow-sm hover:shadow-md"
+            className="rounded-full px-5 shadow-sm hover:shadow-md bg-slate-900 text-white hover:bg-slate-800"
             aria-label={`Add ${title} to cart`}
             onClick={handleAddToCart}
             disabled={isAdding}
@@ -131,7 +132,7 @@ export const BookCard = ({
             ) : (
               <ShoppingCart className="h-4 w-4 mr-2" />
             )}
-            Cart
+            Add
           </Button>
         </div>
       </div>

@@ -39,7 +39,7 @@ class App {
           'https://book-store-gamma-three.vercel.app',
           'https://fictional-space-journey-jjqwxp59qrx4cq6wq-5173.app.github.dev',
           'https://fictional-space-journey-jjqwxp59qrx4cq6wq-3000.app.github.dev',
-          'https://fictional-space-journey-jjqwxp59qrx4cq6wq-5173.app.github.dev'
+          'https://fictional-space-journey-jjqwxp59qrx4cq6wq-5173.app.github.dev',
         ],
         credentials: true,
       }),

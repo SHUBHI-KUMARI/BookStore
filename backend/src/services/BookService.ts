@@ -11,9 +11,9 @@ export class BookService {
 
   private resolveImage(book: {
     image?: string | null;
-    catalogBook?: { image?: string | null; imageOriginal?: string | null } | null;
+    catalogBook?: { imageUrl?: string | null } | null;
   }) {
-    return book.image ?? book.catalogBook?.imageOriginal ?? book.catalogBook?.image ?? null;
+    return book.image ?? book.catalogBook?.imageUrl ?? null;
   }
 
   public async getAllBooks(filters?: {
@@ -54,7 +54,14 @@ export class BookService {
 
   public async getPendingResaleBooks() {
     // Requires a new method in BookRepo, mockup for now
-    return this.bookRepository.findPendingResale();
+    const books = await this.bookRepository.findPendingResale();
+    return books.map((book) => {
+      const { catalogBook, ...rest } = book;
+      return {
+        ...rest,
+        image: this.resolveImage(book),
+      };
+    });
   }
 
   public async addNewBook(data: Record<string, string | number>) {

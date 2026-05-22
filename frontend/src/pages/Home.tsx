@@ -9,6 +9,8 @@ import {
   Clock,
   Users,
   Loader2,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { BookCard } from "../components/books/BookCard";
@@ -22,23 +24,36 @@ interface Category {
   name: string;
 }
 
-const CATEGORY_ICONS: Record<string, { icon: typeof BookOpen; color: string }> =
-  {
-    "Fiction & Literature": {
-      icon: BookOpen,
-      color: "bg-blue-50 text-blue-600",
-    },
-    "Science & Tech": {
-      icon: ShieldCheck,
-      color: "bg-emerald-50 text-emerald-600",
-    },
-    "Business & Economy": { icon: Users, color: "bg-amber-50 text-amber-600" },
-    "History & Bio": { icon: Clock, color: "bg-purple-50 text-purple-600" },
-  };
+const CATEGORY_ICONS: Record<
+  string,
+  { icon: typeof BookOpen; color: string; bg: string }
+> = {
+  "Fiction & Literature": {
+    icon: BookOpen,
+    color: "text-blue-600",
+    bg: "bg-blue-50",
+  },
+  "Science & Tech": {
+    icon: ShieldCheck,
+    color: "text-emerald-600",
+    bg: "bg-emerald-50",
+  },
+  "Business & Economy": {
+    icon: Users,
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+  },
+  "History & Bio": {
+    icon: Clock,
+    color: "text-purple-600",
+    bg: "bg-purple-50",
+  },
+};
 
 const getDefaultCategoryIcon = () => ({
   icon: BookOpen,
-  color: "bg-gray-50 text-gray-600",
+  color: "text-slate-600",
+  bg: "bg-slate-50",
 });
 
 export const Home = () => {
@@ -50,21 +65,17 @@ export const Home = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Fetch data on mount
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError("");
       try {
-        // Fetch categories
         const categoriesRes = await api.get("/categories");
         setCategories(categoriesRes.data);
 
-        // Fetch new books (not used)
         const newBooksData = await bookService.getAll({ isUsed: false });
         setPopularBooks(newBooksData.slice(0, 4));
 
-        // Fetch used books
         const usedBooksData = await bookService.getAll({ isUsed: true });
         setUsedBooks(usedBooksData.slice(0, 4));
       } catch (err: unknown) {
@@ -93,126 +104,111 @@ export const Home = () => {
         conditionDetail: book.condition as "Mint" | "Good" | "Fair" | "Poor",
       };
     }
-    return {
-      condition: "NEW" as const,
-      conditionDetail: undefined,
-    };
+    return { condition: "NEW" as const, conditionDetail: undefined };
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen">
+    <div className="flex flex-col w-full min-h-screen bg-slate-50">
       {/* 1. HERO SECTION */}
-      <section className="relative bg-[var(--color-brand-cream)] pt-16 pb-24 lg:pt-24 lg:pb-32 overflow-hidden border-b border-black/5">
+      <section className="relative pt-24 pb-32 overflow-hidden bg-white">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-100/40 via-white to-white"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
             {/* Left Column: Text & Search */}
-            <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start text-center lg:text-left">
-              <span className="inline-block py-1 px-3 rounded-full bg-[var(--color-brand-muted-orange)]/10 text-[var(--color-brand-muted-orange)] font-bold text-sm mb-6 border border-[var(--color-brand-muted-orange)]/20 shadow-sm transition-transform hover:-translate-y-0.5">
-                Join 50,000+ Readers Weekly
-              </span>
-              <h1 className="text-5xl lg:text-7xl font-serif font-black text-[var(--color-brand-dark-blue)] leading-[1.1] mb-6 tracking-tight">
-                Discover Your Next{" "}
-                <span className="text-[var(--color-brand-muted-orange)] relative inline-block">
-                  Great Read
-                  <svg
-                    className="absolute w-full h-3 -bottom-1 left-0 text-[var(--color-brand-muted-orange)]/30"
-                    viewBox="0 0 100 10"
-                    preserveAspectRatio="none"
-                  >
-                    <path
-                      d="M0 5 Q 50 10 100 0"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                  </svg>
+            <div className="w-full lg:w-[55%] flex flex-col items-center lg:items-start text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 py-2 px-4 rounded-full bg-amber-50 text-amber-700 font-medium text-sm mb-8 border border-amber-200/50 shadow-sm">
+                <Sparkles className="w-4 h-4" />
+                <span>Join 50,000+ Readers Weekly</span>
+              </div>
+              <h1 className="text-5xl lg:text-7xl font-serif text-slate-900 leading-[1.1] mb-8 tracking-tight">
+                Discover Your Next <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500 italic pr-2">
+                  Great Story
                 </span>
               </h1>
-              <p className="text-lg text-[var(--color-brand-brown)] mb-10 max-w-xl leading-relaxed">
-                The premier marketplace for new and pre-loved books. Buy top
-                sellers, or safely list your used books to earn cash while
-                supporting sustainable reading.
+              <p className="text-lg md:text-xl text-slate-600 mb-12 max-w-xl leading-relaxed font-light">
+                The premier destination for bibliophiles. Shop pristine new
+                releases, or explore our curated marketplace for pre-loved
+                treasures.
               </p>
 
               {/* Search Bar Container */}
               <form
                 onSubmit={handleSearch}
-                className="w-full max-w-xl relative flex items-center bg-white rounded-2xl p-2 shadow-lg border border-black/5 focus-within:ring-4 ring-[var(--color-brand-muted-orange)]/20 transition-all duration-300"
+                className="w-full max-w-xl relative flex items-center bg-white rounded-2xl p-2 shadow-xl shadow-slate-200/50 border border-slate-100 focus-within:ring-2 ring-amber-500/20 transition-all duration-300"
               >
-                <Search className="h-6 w-6 text-gray-400 absolute left-6" />
+                <Search className="h-6 w-6 text-slate-400 absolute left-6" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-14 pr-32 py-4 rounded-xl focus:outline-none text-lg text-[var(--color-brand-dark-blue)] placeholder-gray-400 bg-transparent font-medium"
+                  className="w-full pl-16 pr-32 py-4 rounded-xl focus:outline-none text-lg text-slate-800 placeholder-slate-400 bg-transparent font-medium"
                   placeholder="Title, author, or ISBN..."
                 />
                 <Button
                   type="submit"
                   size="lg"
-                  className="absolute right-2 shadow-sm rounded-xl py-3 px-8 text-base"
+                  className="absolute right-2 shadow-md rounded-xl py-3 px-8 text-base bg-slate-900 hover:bg-slate-800 text-white border-0"
                 >
                   Search
                 </Button>
               </form>
 
-              <div className="flex items-center gap-6 mt-10 text-sm font-medium text-[var(--color-brand-brown)]">
+              <div className="flex items-center gap-6 mt-12 text-sm text-slate-600">
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map((i) => (
                     <img
                       key={i}
                       src={`https://i.pravatar.cc/100?img=${i + 10}`}
-                      className="w-10 h-10 rounded-full border-2 border-[var(--color-brand-cream)] shadow-sm"
+                      className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                       alt="User"
                     />
                   ))}
                 </div>
-                <div className="flex flex-col">
-                  <div className="flex gap-1 text-yellow-500">
+                <div className="flex flex-col items-start gap-1">
+                  <div className="flex gap-1 text-amber-500">
                     <Star className="w-4 h-4 fill-current" />
                     <Star className="w-4 h-4 fill-current" />
                     <Star className="w-4 h-4 fill-current" />
                     <Star className="w-4 h-4 fill-current" />
                     <Star className="w-4 h-4 fill-current" />
                   </div>
-                  <span>from 10k+ reviews</span>
+                  <span className="font-medium">from 10k+ reviews</span>
                 </div>
               </div>
             </div>
 
             {/* Right Column: Hero Graphic/Image Grid */}
-            <div className="w-full lg:w-1/2 relative hidden md:block">
-              {/* Decorative blobs/shapes */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-tr from-[var(--color-brand-muted-orange)]/10 to-[var(--color-brand-dark-blue)]/5 rounded-full blur-3xl -z-10" />
-
+            <div className="w-full lg:w-[45%] relative hidden md:block">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-amber-100/40 rounded-full blur-3xl -z-10" />
               <div className="grid grid-cols-2 gap-6 relative">
-                <div className="space-y-6 translate-y-12">
+                <div className="space-y-6 pt-12">
                   <img
                     src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=800"
                     alt="Book"
-                    className="rounded-2xl shadow-2xl hover:scale-[1.02] transition-transform duration-500 border border-white/50"
+                    className="rounded-3xl shadow-2xl hover:-translate-y-2 transition-transform duration-500 object-cover aspect-[3/4]"
                   />
-                  <img
-                    src="https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800"
-                    alt="Book"
-                    className="rounded-2xl shadow-xl hover:scale-[1.02] transition-transform duration-500 border border-white/50"
-                  />
+                  <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl shadow-xl border border-white flex flex-col items-center justify-center text-center hover:-translate-y-2 transition-transform duration-500">
+                    <Recycle className="w-10 h-10 text-emerald-600 mb-3" />
+                    <h3 className="font-bold text-slate-900 text-lg">
+                      Trade In
+                    </h3>
+                    <p className="text-slate-500 text-sm mt-1">
+                      Exchange old books for credit.
+                    </p>
+                  </div>
                 </div>
                 <div className="space-y-6">
                   <img
+                    src="https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800"
+                    alt="Book"
+                    className="rounded-3xl shadow-2xl hover:-translate-y-2 transition-transform duration-500 object-cover aspect-[4/5]"
+                  />
+                  <img
                     src="https://images.unsplash.com/photo-1614544048536-0d28caf77f41?auto=format&fit=crop&q=80&w=800"
                     alt="Book"
-                    className="rounded-2xl shadow-xl hover:scale-[1.02] transition-transform duration-500 border border-white/50"
+                    className="rounded-3xl shadow-2xl hover:-translate-y-2 transition-transform duration-500 object-cover aspect-[3/4]"
                   />
-                  <div className="bg-white p-6 rounded-2xl shadow-xl border border-black/5 flex flex-col items-center justify-center text-center hover:scale-[1.02] transition-transform duration-500">
-                    <Recycle className="w-12 h-12 text-[var(--color-brand-muted-orange)] mb-3" />
-                    <h3 className="font-bold text-[var(--color-brand-dark-blue)] text-lg">
-                      Trade In
-                    </h3>
-                    <p className="text-gray-500 text-sm mt-1">
-                      Exchange old books for cash or credit.
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
@@ -222,61 +218,74 @@ export const Home = () => {
 
       {/* Error State */}
       {error && (
-        <section className="py-12 bg-white">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Retry
+        <section className="py-8 bg-red-50 border-b border-red-100">
+          <div className="max-w-7xl mx-auto px-4 text-center flex flex-col items-center">
+            <p className="text-red-600 mb-4 font-medium">{error}</p>
+            <Button
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="border-red-200 text-red-700 hover:bg-red-100"
+            >
+              Try Again
             </Button>
           </div>
         </section>
       )}
 
       {/* 2. FEATURED CATEGORIES */}
-      <section className="py-20 bg-white">
+      <section className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-end mb-12">
-            <div>
-              <h2 className="text-3xl font-bold font-serif text-[var(--color-brand-dark-blue)] mb-2">
-                Explore Categories
+            <div className="max-w-xl">
+              <h2 className="text-3xl lg:text-4xl font-serif text-slate-900 mb-4 tracking-tight">
+                Explore Curated Categories
               </h2>
-              <p className="text-[var(--color-brand-brown)]">
-                Find precisely what you're looking for
+              <p className="text-slate-600 text-lg font-light">
+                Find exactly what you are looking for in our meticulously
+                organized collections.
               </p>
             </div>
             <Link
               to="/books"
-              className="hidden sm:flex items-center text-[var(--color-brand-dark-blue)] font-bold hover:text-[var(--color-brand-muted-orange)] transition-colors"
+              className="hidden sm:flex items-center text-slate-900 font-medium hover:text-amber-600 transition-colors group"
             >
-              View All <ChevronRight className="w-5 h-5 ml-1" />
+              View Collection{" "}
+              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-10 h-10 animate-spin text-[var(--color-brand-muted-orange)]" />
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {categories.slice(0, 4).map((cat) => {
-                const { icon: Icon, color } =
-                  CATEGORY_ICONS[cat.name] || getDefaultCategoryIcon();
+                const {
+                  icon: Icon,
+                  color,
+                  bg,
+                } = CATEGORY_ICONS[cat.name] || getDefaultCategoryIcon();
                 return (
                   <Link
                     key={cat.id}
                     to={`/books?category=${cat.id}`}
-                    className="group cursor-pointer border border-black/5 hover:border-[var(--color-brand-muted-orange)]/50 rounded-2xl p-6 transition-all duration-300 hover:shadow-lg bg-white"
+                    className="group border border-slate-200 hover:border-amber-300 rounded-3xl p-8 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white relative overflow-hidden"
                   >
                     <div
-                      className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-300 ${color}`}
+                      className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-slate-50 to-transparent rounded-full -mr-16 -mt-16 transition-all group-hover:scale-150 duration-500 opacity-50`}
+                    ></div>
+                    <div
+                      className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 duration-300 ${bg} ${color}`}
                     >
-                      <Icon className="w-7 h-7" />
+                      <Icon className="w-8 h-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-brand-dark-blue)] mb-2">
+                    <h3 className="text-xl font-serif font-bold text-slate-900 mb-2 relative z-10">
                       {cat.name}
                     </h3>
-                    <p className="text-gray-500 font-medium">
-                      Browse Collection
+                    <p className="text-slate-500 font-medium text-sm flex items-center relative z-10">
+                      Browse Books{" "}
+                      <ChevronRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                     </p>
                   </Link>
                 );
@@ -287,32 +296,34 @@ export const Home = () => {
       </section>
 
       {/* 3. POPULAR NEW BOOKS */}
-      <section className="py-20 bg-gray-50/50 border-t border-black/5">
+      <section className="py-24 bg-white border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-end mb-12">
-            <div>
-              <h2 className="text-3xl font-bold font-serif text-[var(--color-brand-dark-blue)] mb-2">
+            <div className="max-w-xl">
+              <h2 className="text-3xl lg:text-4xl font-serif text-slate-900 mb-4 tracking-tight">
                 Trending Bestsellers
               </h2>
-              <p className="text-[var(--color-brand-brown)]">
-                The most popular new releases this week
+              <p className="text-slate-600 text-lg font-light">
+                The most popular new releases captivating readers worldwide this
+                week.
               </p>
             </div>
             <Link
               to="/books"
-              className="hidden sm:flex items-center text-[var(--color-brand-dark-blue)] font-bold hover:text-[var(--color-brand-muted-orange)] transition-colors"
+              className="hidden sm:flex items-center text-slate-900 font-medium hover:text-amber-600 transition-colors group"
             >
-              Shop New <ChevronRight className="w-5 h-5 ml-1" />
+              Shop New Arrivals{" "}
+              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-10 h-10 animate-spin text-[var(--color-brand-muted-orange)]" />
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
             </div>
           ) : popularBooks.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              No books available yet.
+            <div className="text-center py-20 bg-slate-50 rounded-3xl border border-slate-100 text-slate-500">
+              New arrivals will be listed here soon.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -339,44 +350,50 @@ export const Home = () => {
       </section>
 
       {/* 4. USED BOOKS (MARKETPLACE) */}
-      <section className="py-24 bg-[var(--color-brand-dark-blue)] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center mb-16 gap-6 text-center md:text-left">
+      <section className="py-32 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-800 to-transparent opacity-50 pointer-events-none"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-16 gap-8 text-center md:text-left">
             <div className="max-w-2xl">
-              <span className="text-[var(--color-brand-muted-orange)] font-bold tracking-wider uppercase text-sm mb-3 block">
+              <div className="inline-block px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 font-medium text-xs mb-6 border border-amber-500/30 tracking-widest uppercase">
                 Community Marketplace
-              </span>
-              <h2 className="text-4xl font-bold font-serif mb-4">
-                Pre-Loved Books at Great Prices
+              </div>
+              <h2 className="text-4xl lg:text-5xl font-serif mb-6 tracking-tight">
+                Pre-Loved Books, <br className="hidden md:block" /> Unbeatable
+                Value
               </h2>
-              <p className="text-gray-300 text-lg">
-                Save money and reduce waste by buying quality used books from
-                fellow readers. Every book is verified for condition quality.
+              <p className="text-slate-300 text-lg font-light leading-relaxed">
+                Embrace sustainable reading. Find quality-assured used books
+                from fellow readers worldwide. Every copy has a history, and
+                yours is next.
               </p>
             </div>
             <Link to="/books?isUsed=true">
-              <Button variant="secondary" size="lg" className="shrink-0 group">
-                Browse Used Books
-                <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              <Button
+                size="lg"
+                className="shrink-0 group bg-white text-slate-900 hover:bg-slate-100 border-0 shadow-xl px-8 py-6 rounded-full text-lg"
+              >
+                Browse Marketplace
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-10 h-10 animate-spin text-white" />
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
             </div>
           ) : usedBooks.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              No used books available yet. Be the first to sell!
+            <div className="text-center py-20 bg-slate-800/50 rounded-3xl border border-slate-700 text-slate-400">
+              The marketplace is waiting for its first listing.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:-mr-4 pr-4 pb-8 overflow-x-auto snap-x">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {usedBooks.map((book) => {
                 const { condition, conditionDetail } =
                   getConditionDisplay(book);
                 return (
-                  <div key={book.id} className="snap-start min-w-[280px]">
+                  <div key={book.id} className="relative group">
                     <BookCard
                       id={book.id}
                       title={book.title}
@@ -396,116 +413,109 @@ export const Home = () => {
       </section>
 
       {/* 5. WHY CHOOSE US */}
-      <section className="py-24 bg-white border-b border-black/5">
+      <section className="py-32 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold font-serif text-[var(--color-brand-dark-blue)] mb-4">
-              The ReBook Advantage
+          <div className="text-center max-w-3xl mx-auto mb-20">
+            <h2 className="text-3xl lg:text-4xl font-serif text-slate-900 mb-6 tracking-tight">
+              The ReBook Experience
             </h2>
-            <p className="text-[var(--color-brand-brown)] text-lg">
-              We are built differently to ensure transparency, quality, and
-              community trust.
+            <p className="text-slate-600 text-lg font-light">
+              We have reimagined the bookstore experience prioritizing quality,
+              transparency, and community connection.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-12">
-            <div className="text-center flex flex-col items-center group">
-              <div className="w-20 h-20 bg-[var(--color-brand-cream)] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 group-hover:bg-[var(--color-brand-muted-orange)]/10">
-                <ShieldCheck className="w-10 h-10 text-[var(--color-brand-muted-orange)] group-hover:scale-110 transition-transform" />
+          <div className="grid md:grid-cols-3 gap-12 lg:gap-16">
+            {[
+              {
+                icon: ShieldCheck,
+                title: "Curated & Verified",
+                desc: "Our quality assurance team ensures every used listing strictly matches its detailed condition report.",
+              },
+              {
+                icon: Recycle,
+                title: "Eco-Conscious Reading",
+                desc: "Participate in a circular economy. Give books a second life and significantly reduce your carbon footprint.",
+              },
+              {
+                icon: BookOpen,
+                title: "Limitless Selection",
+                desc: "From the latest hardcovers to rare, out-of-print paperbacks—find exactly what you need in one place.",
+              },
+            ].map((feature, i) => (
+              <div
+                key={i}
+                className="text-center flex flex-col items-center group"
+              >
+                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 shadow-sm border border-slate-100 group-hover:-translate-y-2 transition-all duration-300">
+                  <feature.icon className="w-10 h-10 text-slate-800 group-hover:text-amber-600 transition-colors" />
+                </div>
+                <h3 className="text-2xl font-serif text-slate-900 mb-4">
+                  {feature.title}
+                </h3>
+                <p className="text-slate-600 font-light leading-relaxed px-4">
+                  {feature.desc}
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-[var(--color-brand-dark-blue)] mb-3">
-                Verified Sellers
-              </h3>
-              <p className="text-gray-500 leading-relaxed">
-                Our strict approval workflow ensures that every used book listed
-                matches its described condition.
-              </p>
-            </div>
-
-            <div className="text-center flex flex-col items-center group">
-              <div className="w-20 h-20 bg-[var(--color-brand-cream)] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 group-hover:bg-[var(--color-brand-muted-orange)]/10">
-                <Recycle className="w-10 h-10 text-[var(--color-brand-muted-orange)] group-hover:scale-110 transition-transform" />
-              </div>
-              <h3 className="text-xl font-bold text-[var(--color-brand-dark-blue)] mb-3">
-                Eco-Friendly Reading
-              </h3>
-              <p className="text-gray-500 leading-relaxed">
-                By choosing to buy and sell used books, you are directly
-                contributing to a circular economy.
-              </p>
-            </div>
-
-            <div className="text-center flex flex-col items-center group">
-              <div className="w-20 h-20 bg-[var(--color-brand-cream)] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 group-hover:bg-[var(--color-brand-muted-orange)]/10">
-                <BookOpen className="w-10 h-10 text-[var(--color-brand-muted-orange)] group-hover:scale-110 transition-transform" />
-              </div>
-              <h3 className="text-xl font-bold text-[var(--color-brand-dark-blue)] mb-3">
-                Vast Selection
-              </h3>
-              <p className="text-gray-500 leading-relaxed">
-                From new bestsellers to out-of-print textbooks, our hybrid
-                marketplace has it all in one cart.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* 6. TESTIMONIALS */}
-      <section className="py-24 bg-[var(--color-brand-cream)]/50 relative overflow-hidden">
-        {/* Quote watermark background */}
-        <div className="absolute top-10 left-10 text-[20rem] text-[var(--color-brand-muted-orange)]/5 font-serif leading-none select-none pointer-events-none">
+      <section className="py-32 bg-white relative overflow-hidden border-t border-slate-100">
+        <div className="absolute -top-24 -left-20 text-[30rem] text-slate-50 font-serif leading-none select-none pointer-events-none z-0">
           "
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <h2 className="text-3xl font-bold font-serif text-[var(--color-brand-dark-blue)] mb-16 text-center">
-            Loved by Readers Everywhere
+          <h2 className="text-3xl lg:text-4xl font-serif text-slate-900 mb-20 text-center tracking-tight">
+            Voices from Our Community
           </h2>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
             {[
               {
                 n: "Sarah Jenkins",
-                r: "Student",
-                t: "I bought all my textbooks here used for a fraction of the university bookstore price. They arrived in great condition exactly as described!",
+                r: "Literature Student",
+                t: "I purchased all my required reading here. The used books arrived in spectacular condition, saving me hundreds.",
               },
               {
                 n: "David Cho",
                 r: "Avid Reader",
-                t: "Selling the novels I finished reading has never been easier. The platform connects me with buyers instantly and handles the process.",
+                t: "The marketplace is brilliantly designed. It took me less than three minutes to list my read novels and find buyers.",
               },
               {
                 n: "Emily R.",
                 r: "Book Collector",
-                t: "I love how I can seamlessly buy both new releases and track down rare used books in a single shopping cart. Beautiful UI as well.",
+                t: "A seamless blend of new and rare used books. The interface is gorgeous, and the customer support is unparalleled.",
               },
             ].map((test, i) => (
               <div
                 key={i}
-                className="bg-white p-8 rounded-2xl shadow-sm border border-black/5 relative hover:-translate-y-2 transition-transform duration-300"
+                className="bg-slate-50 p-10 rounded-3xl relative hover:-translate-y-2 transition-transform duration-300 border border-slate-100/50"
               >
-                <div className="flex gap-1 text-[var(--color-brand-muted-orange)] mb-6">
+                <div className="flex gap-1 text-amber-500 mb-8">
                   <Star className="w-5 h-5 fill-current" />
                   <Star className="w-5 h-5 fill-current" />
                   <Star className="w-5 h-5 fill-current" />
                   <Star className="w-5 h-5 fill-current" />
                   <Star className="w-5 h-5 fill-current" />
                 </div>
-                <p className="text-[var(--color-brand-brown)] text-lg italic mb-8 relative z-10">
+                <p className="text-slate-700 text-lg font-light leading-relaxed mb-10">
                   "{test.t}"
                 </p>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 mt-auto">
                   <img
                     src={`https://i.pravatar.cc/100?img=${i + 25}`}
-                    className="w-12 h-12 rounded-full border-2 border-[var(--color-brand-cream)]"
+                    className="w-14 h-14 rounded-full shadow-sm"
                     alt={test.n}
                   />
                   <div>
-                    <h4 className="font-bold text-[var(--color-brand-dark-blue)]">
-                      {test.n}
-                    </h4>
-                    <span className="text-sm text-gray-500">{test.r}</span>
+                    <h4 className="font-medium text-slate-900">{test.n}</h4>
+                    <span className="text-sm text-slate-500 font-light">
+                      {test.r}
+                    </span>
                   </div>
                 </div>
               </div>

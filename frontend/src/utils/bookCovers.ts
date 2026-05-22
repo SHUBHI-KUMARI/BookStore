@@ -38,7 +38,8 @@ function normalizeCoverUrl(rawUrl: string) {
   }
 
   if (trimmed.startsWith("//")) {
-    const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
+    const protocol =
+      typeof window !== "undefined" ? window.location.protocol : "https:";
     return `${protocol}${trimmed}`;
   }
 

@@ -43,7 +43,7 @@ export class BookRepository {
       include: {
         category: true,
         seller: true,
-        catalogBook: { select: { image: true, imageOriginal: true } },
+        catalogBook: { select: { imageUrl: true } },
       },
     });
   }
@@ -53,7 +53,7 @@ export class BookRepository {
       where: { id },
       include: {
         category: true,
-        catalogBook: { select: { image: true, imageOriginal: true } },
+        catalogBook: { select: { imageUrl: true } },
         seller: { select: { id: true, name: true, email: true } },
         reviews: {
           select: {
@@ -81,7 +81,11 @@ export class BookRepository {
   public async findPendingResale() {
     return database.prisma.book.findMany({
       where: { isUsed: true, approvalStatus: 'PENDING' },
-      include: { category: true, seller: true },
+      include: {
+        category: true,
+        seller: true,
+        catalogBook: { select: { imageUrl: true } },
+      },
     });
   }
 
