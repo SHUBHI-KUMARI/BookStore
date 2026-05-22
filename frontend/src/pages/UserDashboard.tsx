@@ -13,11 +13,17 @@ import {
   LayoutDashboard,
   TrendingUp,
   Library,
-  BookMarked
+  BookMarked,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
 import { userService } from "../services/userService";
+import { getBookCoverUrl } from "../utils/bookCovers";
 import type { Order } from "../services/orderService";
 import type { Book, Review } from "../services/bookService";
 
@@ -141,8 +147,8 @@ export const UserDashboard = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all ${activeTab === tab.id
-                    ? "bg-slate-900 text-white shadow-md shadow-slate-200"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  ? "bg-slate-900 text-white shadow-md shadow-slate-200"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
               >
                 <tab.icon
@@ -294,145 +300,216 @@ export const UserDashboard = () => {
 
         {/* Profile Tab */}
         {activeTab === "profile" && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-3xl font-serif font-bold text-slate-900 mb-6">
-              Profile Settings
-            </h1>
-
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-              <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                <h2 className="text-xl font-serif font-bold text-slate-900">
-                  Personal Information
-                </h2>
-                {!isEditing ? (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+              <div>
+                <h1 className="text-3xl font-serif font-bold text-slate-900 mb-2">
+                  Profile Settings
+                </h1>
+                <p className="text-slate-500">Manage your account details and delivery preferences.</p>
+              </div>
+              {!isEditing ? (
+                <Button
+                  onClick={() => setIsEditing(true)}
+                  className="bg-white border hover:bg-slate-50 text-slate-700 rounded-2xl px-6 py-2.5 shadow-sm border-slate-200"
+                  variant="outline"
+                >
+                  <Settings className="w-4 h-4 mr-2" /> Edit Profile
+                </Button>
+              ) : (
+                <div className="flex gap-3">
                   <Button
                     variant="outline"
-                    onClick={() => setIsEditing(true)}
-                    className="rounded-full border-slate-200 text-slate-700 hover:bg-slate-50"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditForm({
+                        name: (profile?.name as string) || "",
+                        email: (profile?.email as string) || "",
+                        phone: (profile?.phone as string) || "",
+                        address: (profile?.address as string) || "",
+                        age: profile?.age?.toString() || "",
+                      });
+                    }}
+                    className="rounded-2xl border-slate-200 px-6 py-2.5"
                   >
-                    <Settings className="w-4 h-4 mr-2" /> Edit Profile
+                    Cancel
                   </Button>
-                ) : (
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setEditForm({
-                          name: (profile?.name as string) || "",
-                          email: (profile?.email as string) || "",
-                          phone: (profile?.phone as string) || "",
-                          address: (profile?.address as string) || "",
-                          age: profile?.age?.toString() || "",
-                        });
-                      }}
-                      className="rounded-full border-slate-200"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      className="bg-slate-900 text-white rounded-full hover:bg-slate-800"
-                      onClick={handleUpdateProfile}
-                    >
-                      Save Changes
-                    </Button>
+                  <Button
+                    className="bg-slate-900 text-white rounded-2xl px-6 py-2.5 hover:bg-slate-800 shadow-md shadow-slate-900/10"
+                    onClick={handleUpdateProfile}
+                  >
+                    Save Changes
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column: Quick Profile Card */}
+              <div className="lg:col-span-1">
+                <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/10 h-full">
+                  <div className="absolute -top-10 -right-10 p-8 opacity-5">
+                    <ShieldCheck className="w-48 h-48" />
                   </div>
-                )}
+                  <div className="relative z-10">
+                    <div className="w-20 h-20 bg-amber-400 rounded-2xl flex items-center justify-center text-slate-900 font-bold text-4xl mb-6 shadow-lg shadow-amber-400/20">
+                      {(profile?.name || user?.name || "U").charAt(0).toUpperCase()}
+                    </div>
+                    <h2 className="font-serif font-bold text-2xl mb-1">{profile?.name || user?.name || "User"}</h2>
+                    <p className="text-slate-400 mb-8 flex items-center gap-2 text-sm"><Mail className="w-4 h-4" /> {profile?.email || user?.email}</p>
+
+                    <div className="pt-6 border-t border-slate-800/50">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2">Account Role</p>
+                      <div className="inline-block bg-white/10 px-3 py-1.5 rounded-lg border border-white/5">
+                        <p className="font-medium text-amber-400 capitalize text-sm flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4" />
+                          {(profile?.role || user?.role || "Customer").toLowerCase()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                  <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block">
-                    Full Name
-                  </label>
-                  {!isEditing ? (
-                    <p className="font-medium text-slate-900 text-lg">
-                      {profile?.name || user?.name || "User"}
-                    </p>
-                  ) : (
-                    <input
-                      value={editForm.name}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, name: e.target.value })
-                      }
-                      className="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
-                    />
-                  )}
+
+              {/* Right Column: Editable Fields */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
+                  <h3 className="text-xl font-serif font-bold text-slate-900 mb-6">Personal Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Full Name */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">Full Name</label>
+                      {!isEditing ? (
+                        <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-slate-400 shrink-0">
+                            <User className="w-5 h-5" />
+                          </div>
+                          <p className="font-medium text-slate-900 truncate">{profile?.name || user?.name || "Not provided"}</p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <User className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <input
+                            value={editForm.name}
+                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-3.5 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-900"
+                            placeholder="Your full name"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">Email Address</label>
+                      {!isEditing ? (
+                        <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-slate-400 shrink-0">
+                            <Mail className="w-5 h-5" />
+                          </div>
+                          <p className="font-medium text-slate-900 truncate">{profile?.email || user?.email}</p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Mail className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <input
+                            value={editForm.email}
+                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-3.5 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-900"
+                            placeholder="Your email address"
+                            type="email"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Age */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">Age</label>
+                      {!isEditing ? (
+                        <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-slate-400 shrink-0">
+                            <Calendar className="w-5 h-5" />
+                          </div>
+                          <p className="font-medium text-slate-900">{profile?.age || "Not provided"}</p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Calendar className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <input
+                            type="number"
+                            value={editForm.age}
+                            onChange={(e) => setEditForm({ ...editForm, age: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-3.5 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-900"
+                            placeholder="e.g. 25"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block">
-                    Email Address
-                  </label>
-                  {!isEditing ? (
-                    <p className="font-medium text-slate-900 text-lg">
-                      {profile?.email || user?.email || ""}
-                    </p>
-                  ) : (
-                    <input
-                      value={editForm.email}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, email: e.target.value })
-                      }
-                      className="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block">
-                    Phone Number
-                  </label>
-                  {!isEditing ? (
-                    <p className="font-medium text-slate-900 text-lg">
-                      {profile?.phone || "Not provided"}
-                    </p>
-                  ) : (
-                    <input
-                      value={editForm.phone}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, phone: e.target.value })
-                      }
-                      className="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block">
-                    Age
-                  </label>
-                  {!isEditing ? (
-                    <p className="font-medium text-slate-900 text-lg">
-                      {profile?.age || "Not provided"}
-                    </p>
-                  ) : (
-                    <input
-                      type="number"
-                      value={editForm.age}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, age: e.target.value })
-                      }
-                      className="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
-                      placeholder="e.g. 25"
-                    />
-                  )}
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2 block">
-                    Default Delivery Address
-                  </label>
-                  {!isEditing ? (
-                    <p className="font-medium text-slate-900 text-lg">
-                      {profile?.address || "Not provided"}
-                    </p>
-                  ) : (
-                    <textarea
-                      value={editForm.address}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, address: e.target.value })
-                      }
-                      className="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all min-h-[100px]"
-                      placeholder="123 Market St, Apt 4B&#10;San Francisco, CA 94105"
-                    />
-                  )}
+
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
+                  <h3 className="text-xl font-serif font-bold text-slate-900 mb-6">Contact & Delivery</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Phone */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">Phone Number</label>
+                      {!isEditing ? (
+                        <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-slate-400 shrink-0">
+                            <Phone className="w-5 h-5" />
+                          </div>
+                          <p className="font-medium text-slate-900">{profile?.phone || "Not provided"}</p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Phone className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <input
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-3.5 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-900"
+                            placeholder="+1 (555) 123-4567"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Address - full width */}
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">Delivery Address</label>
+                      {!isEditing ? (
+                        <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 min-h-[100px]">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-slate-400 shrink-0">
+                            <MapPin className="w-5 h-5" />
+                          </div>
+                          <p className={`font-medium pt-2 whitespace-pre-wrap ${profile?.address ? 'text-slate-900' : 'text-slate-400 italic'}`}>
+                            {profile?.address || "No delivery address provided. Adding one will speed up checkout."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute top-4 left-0 pl-4 flex items-start pointer-events-none">
+                            <MapPin className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <textarea
+                            value={editForm.address}
+                            onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-4 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-900 min-h-[120px] resize-none"
+                            placeholder="123 Market St, Apt 4B&#10;San Francisco, CA 94105"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -513,27 +590,47 @@ export const UserDashboard = () => {
                 <p className="text-slate-500">You haven't listed any books for sale yet.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {listings.map((listing) => (
                   <div
                     key={listing.id}
-                    className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between"
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex gap-6 transition-all hover:shadow-md hover:border-amber-200"
                   >
-                    <div className="mb-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-bold text-lg text-slate-900 line-clamp-2">
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="mb-2">
+                          <span
+                            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase tracking-wider inline-block ${listing.approvalStatus === "APPROVED" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : listing.approvalStatus === "PENDING" ? "bg-amber-50 text-amber-600 border border-amber-100" : "bg-red-50 text-red-600 border border-red-100"}`}
+                          >
+                            {listing.approvalStatus ?? (listing.isUsed ? "PENDING" : "APPROVED")}
+                          </span>
+                        </div>
+                        <h3 className="font-bold text-lg font-serif text-slate-900 line-clamp-2 mb-1">
                           {listing.title}
                         </h3>
-                        <span
-                          className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase tracking-wider shrink-0 ml-4 ${listing.approvalStatus === "APPROVED" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : listing.approvalStatus === "PENDING" ? "bg-amber-50 text-amber-600 border border-amber-100" : "bg-red-50 text-red-600 border border-red-100"}`}
-                        >
-                          {listing.approvalStatus ?? (listing.isUsed ? "PENDING" : "APPROVED")}
-                        </span>
+                        {listing.author && (
+                          <p className="text-sm text-slate-500 mb-3 line-clamp-1">{listing.author}</p>
+                        )}
+                        <p className={`text-xs border px-3 py-1.5 rounded-lg inline-block font-bold tracking-wide uppercase ${listing.condition === 'NEW' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          listing.condition === 'GOOD' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            listing.condition === 'FAIR' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              listing.condition === 'POOR' ? 'bg-red-50 text-red-700 border-red-200' :
+                                'bg-slate-50 text-slate-600 border-slate-200'
+                          }`}>
+                          {listing.condition || "NEW"}
+                        </p>
                       </div>
-                      <p className="text-sm text-slate-500 font-medium">Condition: {listing.condition}</p>
+                      <div className="mt-4 pt-4 border-t border-slate-50">
+                        <span className="text-2xl font-bold text-slate-900">${listing.price?.toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div className="pt-4 border-t border-slate-50">
-                      <span className="text-2xl font-bold text-slate-900">${listing.price.toFixed(2)}</span>
+                    <div className="w-28 md:w-32 h-40 md:h-44 shrink-0 rounded-2xl overflow-hidden border border-slate-100 shadow-sm relative group bg-slate-50 flex items-center justify-center">
+                      <img
+                        src={getBookCoverUrl(listing)}
+                        alt={listing.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl"></div>
                     </div>
                   </div>
                 ))}
