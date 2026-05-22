@@ -19,8 +19,16 @@ class BookRoutes {
 
     // Protected Routes: Create Books (Admin -> New, Customer -> Used)
     this.router.post('/', authenticateJWT, this.bookController.createBook);
+    this.router.patch('/:id', authenticateJWT, this.bookController.updateBook);
+    this.router.delete('/:id', authenticateJWT, this.bookController.deleteBook);
 
     // Admin Routes: Handle Resale workflow
+    this.router.get(
+      '/admin/all',
+      authenticateJWT,
+      authorizeRole(['ADMIN']),
+      this.bookController.getAdminBooks,
+    );
     this.router.get(
       '/admin/pending',
       authenticateJWT,

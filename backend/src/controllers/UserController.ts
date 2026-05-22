@@ -1,8 +1,11 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import database from '../config/database';
+import { BookService } from '../services/BookService';
 
 export class UserController {
+  private bookService = new BookService();
+
   // Get current user details
   public getUserDetails = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -61,10 +64,13 @@ export class UserController {
   // Get books listed by the current user (their used book listings)
   public getUserListings = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const listings = await database.prisma.book.findMany({
-        where: { sellerId: req.user?.userId },
-        include: { category: true },
-      });
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      const listings = await this.bookService.getSellerListings(userId);
       res.json(listings);
     } catch (e) {
       res.status(500).json({ error: (e as Error).message });
@@ -116,6 +122,28 @@ export class UserController {
   public deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        res.status(400).json({ message: 'User id is required' });
+        return;
+      }
+
+      if (id === req.user?.userId) {
+        res.status(400).json({ message: 'You cannot delete your own admin account' });
+        return;
+      }
+
+      const orderCount = await database.prisma.order.count({
+        where: { userId: id as string },
+      });
+
+      if (orderCount > 0) {
+        res.status(400).json({
+          message:
+            'This user has order history and cannot be deleted safely. Consider deactivating them instead.',
+        });
+        return;
+      }
+
       await database.prisma.user.delete({ where: { id: id as string } });
       res.json({ message: 'User deleted successfully' });
     } catch (e) {

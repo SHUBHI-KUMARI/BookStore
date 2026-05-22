@@ -25,13 +25,22 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    const roleVal = data.role ? (data.role as Role) : 'CUSTOMER';
+    let roleVal: Role = 'CUSTOMER';
+    if (data.role === 'ADMIN') {
+      const inviteCode = process.env.ADMIN_REGISTRATION_CODE;
+      if (!inviteCode || data.adminCode !== inviteCode) {
+        throw new Error('Admin registration is disabled');
+      }
+      roleVal = 'ADMIN';
+    }
 
     const newUser = await this.userRepository.create({
       name: data.name,
       email: data.email,
       password: hashedPassword,
       role: roleVal,
+      phone: data.phone || undefined,
+      address: data.address || undefined,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

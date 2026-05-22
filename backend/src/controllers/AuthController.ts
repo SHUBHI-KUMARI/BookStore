@@ -18,6 +18,10 @@ export class AuthController {
     } catch (error) {
       if ((error as Error).message === 'User already exists') {
         res.status(409).json({ message: (error as Error).message });
+      } else if ((error as Error).message === 'Missing required fields') {
+        res.status(400).json({ message: (error as Error).message });
+      } else if ((error as Error).message === 'Admin registration is disabled') {
+        res.status(403).json({ message: (error as Error).message });
       } else {
         res.status(500).json({ message: 'Internal Server Error', error: (error as Error).message });
       }

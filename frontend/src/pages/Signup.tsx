@@ -3,12 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { Textarea } from "../components/ui/Textarea";
 
 const Signup = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"CUSTOMER" | "ADMIN">("CUSTOMER");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register } = useAuth();
@@ -25,7 +27,7 @@ const Signup = () => {
 
     setIsSubmitting(true);
     try {
-      await register({ name, email, password, role });
+      await register({ name, email, password, phone, address });
       navigate("/login");
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
@@ -78,41 +80,19 @@ const Signup = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimum 6 characters"
             />
-
-            <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-sm font-bold text-[var(--color-brand-dark-blue)]">
-                Account Type
-              </label>
-              <div className="flex gap-4 mt-2">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="role"
-                    value="CUSTOMER"
-                    checked={role === "CUSTOMER"}
-                    onChange={() => setRole("CUSTOMER")}
-                    className="h-4 w-4 text-[var(--color-brand-muted-orange)] border-gray-300 focus:ring-[var(--color-brand-dark-blue)]"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">
-                    Customer (Buy/Sell Books)
-                  </span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="role"
-                    value="ADMIN"
-                    checked={role === "ADMIN"}
-                    onChange={() => setRole("ADMIN")}
-                    className="h-4 w-4 text-[var(--color-brand-muted-orange)] border-gray-300 focus:ring-[var(--color-brand-dark-blue)]"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Admin</span>
-                </label>
-              </div>
-              <p className="text-xs text-gray-500 mt-2 italic">
-                Note: Admin selection is visible for demo purposes only.
-              </p>
-            </div>
+            <Input
+              label="Phone Number"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Optional, for delivery updates"
+            />
+            <Textarea
+              label="Address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Optional, you can also add this later in your dashboard"
+            />
           </div>
 
           <Button

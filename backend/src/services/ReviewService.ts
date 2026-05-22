@@ -1,5 +1,6 @@
 import { ReviewRepository } from '../repositories/ReviewRepository';
 import { Review } from '@prisma/client';
+import database from '../config/database';
 
 export class ReviewService {
   private reviewRepository: ReviewRepository;
@@ -16,13 +17,28 @@ export class ReviewService {
     userId: string,
     bookId: string,
     rating: number,
-    comment: string,
+    comment?: string,
   ): Promise<Review> {
     if (rating < 1 || rating > 5) {
       throw new Error('Rating must be between 1 and 5');
     }
-    // You could also verify if the user has purchased the book
-    return this.reviewRepository.createReview(userId, bookId, rating, comment);
+
+    const hasPurchasedBook = await database.prisma.orderItem.findFirst({
+      where: {
+        bookId,
+        order: {
+          userId,
+          paymentStatus: 'COMPLETED',
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!hasPurchasedBook) {
+      throw new Error('You can only review books you have purchased');
+    }
+
+    return this.reviewRepository.createReview(userId, bookId, rating, comment ?? '');
   }
 
   public async removeReview(reviewId: string): Promise<Review> {

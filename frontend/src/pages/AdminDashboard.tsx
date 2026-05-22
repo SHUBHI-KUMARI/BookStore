@@ -1,163 +1,283 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Users,
-  BookOpen,
-  PackageOpen,
-  CheckCircle,
   BarChart3,
-  Settings,
-  LogOut,
-  Search,
-  MoreVertical,
-  ShieldCheck,
+  BookOpen,
+  CheckCircle,
+  Layers3,
   Loader2,
+  LogOut,
+  PackageOpen,
+  PlusCircle,
+  Settings,
+  ShieldCheck,
+  Trash2,
+  Users,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { Textarea } from "../components/ui/Textarea";
 import { useAuth } from "../hooks/useAuth";
-import { adminService } from "../services/adminService";
-import type { Order } from "../services/orderService";
+import {
+  adminService,
+  type AdminUser,
+  type Category,
+} from "../services/adminService";
 import type { Book } from "../services/bookService";
-import type { AdminUser } from "../services/adminService";
+import type { Order } from "../services/orderService";
 
-interface StatsData {
-  totalSales: number;
-  totalOrders: number;
-  activeUsers: number;
-  totalBooks: number;
-  pendingApproval: number;
-}
+type AdminTab =
+  | "overview"
+  | "inventory"
+  | "approvals"
+  | "orders"
+  | "users"
+  | "settings";
+
+const ORDER_STATUS_OPTIONS = [
+  { value: "PENDING", label: "Pending" },
+  { value: "PROCESSING", label: "Processing" },
+  { value: "SHIPPED", label: "Shipped" },
+  { value: "DELIVERED", label: "Delivered" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
 
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState("overview");
   const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [isLoading, setIsLoading] = useState(false);
-  const [stats, setStats] = useState<StatsData | null>(null);
+  const [error, setError] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [pendingBooks, setPendingBooks] = useState<Book[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryForm, setCategoryForm] = useState({
+    name: "",
+    description: "",
+  });
+  const [newBookForm, setNewBookForm] = useState({
+    title: "",
+    author: "",
+    categoryId: "",
+    price: "",
+    stock: "",
+    description: "",
+    image: "",
+  });
 
-  const MENU = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
-    { id: "books", label: "Manage Books", icon: BookOpen },
-    { id: "approvals", label: "Listing Approvals", icon: CheckCircle },
-    { id: "orders", label: "Orders", icon: PackageOpen },
-    { id: "users", label: "Users", icon: Users },
-    { id: "settings", label: "Settings", icon: Settings },
-  ];
-
-  const loadOverviewData = useCallback(async () => {
+  const loadBaseData = async (tab: AdminTab) => {
     setIsLoading(true);
+    setError("");
+
     try {
-      const [ordersData, booksData, usersData] = await Promise.all([
-        adminService.getAllOrders(),
-        adminService.getAllBooks(),
-        adminService.getAllUsers(),
-      ]);
-      const totalSales = ordersData
-        .filter((o) => o.paymentStatus === "COMPLETED")
-        .reduce((sum, o) => sum + o.totalAmount, 0);
-      const pendingBooks = booksData.filter(
-        (b) => b.isUsed && b.approvalStatus === "PENDING",
-      ).length;
-      setStats({
-        totalSales,
-        totalOrders: ordersData.length,
-        activeUsers: usersData.length,
-        totalBooks: booksData.length,
-        pendingApproval: pendingBooks,
-      });
-      setOrders(ordersData.slice(0, 5));
-      setPendingBooks(
-        booksData
-          .filter((b) => b.isUsed && b.approvalStatus === "PENDING")
-          .slice(0, 5),
+      if (tab === "overview") {
+        const [ordersData, booksData, usersData, categoryData] =
+          await Promise.all([
+            adminService.getAllOrders(),
+            adminService.getAllBooks(),
+            adminService.getAllUsers(),
+            adminService.getCategories(),
+          ]);
+        setOrders(ordersData);
+        setBooks(booksData);
+        setUsers(usersData);
+        setCategories(categoryData);
+        setPendingBooks(
+          booksData.filter(
+            (book) => book.isUsed && book.approvalStatus === "PENDING",
+          ),
+        );
+        return;
+      }
+
+      if (tab === "inventory") {
+        const [booksData, categoryData] = await Promise.all([
+          adminService.getAllBooks(),
+          adminService.getCategories(),
+        ]);
+        setBooks(booksData);
+        setCategories(categoryData);
+        return;
+      }
+
+      if (tab === "approvals") {
+        setPendingBooks(await adminService.getPendingBooks());
+        return;
+      }
+
+      if (tab === "orders") {
+        setOrders(await adminService.getAllOrders());
+        return;
+      }
+
+      if (tab === "users") {
+        setUsers(await adminService.getAllUsers());
+        return;
+      }
+
+      setCategories(await adminService.getCategories());
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load admin data.",
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  const loadOrders = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await adminService.getAllOrders();
-      setOrders(data);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const loadPendingBooks = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await adminService.getPendingBooks();
-      setPendingBooks(data);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const loadUsers = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await adminService.getAllUsers();
-      setUsers(data);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const loadAllBooks = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await adminService.getAllBooks();
-      setAllBooks(data);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  };
 
   useEffect(() => {
-    void loadOverviewData();
-  }, [loadOverviewData]);
+    void loadBaseData(activeTab);
+  }, [activeTab]);
 
-  useEffect(() => {
-    if (activeTab === "orders") void loadOrders();
-    if (activeTab === "approvals") void loadPendingBooks();
-    if (activeTab === "users") void loadUsers();
-    if (activeTab === "books") void loadAllBooks();
-  }, [activeTab, loadOrders, loadPendingBooks, loadUsers, loadAllBooks]);
+  const stats = useMemo(() => {
+    const totalSales = orders
+      .filter((order) => order.paymentStatus === "COMPLETED")
+      .reduce((sum, order) => sum + order.totalAmount, 0);
+
+    const paidOrders = orders.filter(
+      (order) => order.paymentStatus === "COMPLETED",
+    ).length;
+
+    return {
+      totalSales,
+      totalOrders: orders.length,
+      paidOrders,
+      totalBooks: books.length,
+      pendingApproval: pendingBooks.length,
+      totalUsers: users.length,
+    };
+  }, [orders, books, pendingBooks, users]);
+
+  const menu = [
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "inventory", label: "Inventory", icon: BookOpen },
+    { id: "approvals", label: "Approvals", icon: CheckCircle },
+    { id: "orders", label: "Orders", icon: PackageOpen },
+    { id: "users", label: "Users", icon: Users },
+    { id: "settings", label: "Settings", icon: Settings },
+  ] as const;
 
   const handleApproveBook = async (
     id: string,
     status: "APPROVED" | "REJECTED",
   ) => {
+    setError("");
     try {
       await adminService.approveBook(id, status);
-      await loadPendingBooks();
-      await loadOverviewData();
+      const refreshed = await adminService.getPendingBooks();
+      setPendingBooks(refreshed);
+      if (activeTab === "overview" || activeTab === "inventory") {
+        setBooks(await adminService.getAllBooks());
+      }
     } catch (err) {
-      console.error("Failed to update book status:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to update listing status.",
+      );
+    }
+  };
+
+  const handleDeleteBook = async (bookId: string) => {
+    if (!window.confirm("Delete this book?")) return;
+
+    setError("");
+    try {
+      await adminService.deleteBook(bookId);
+      setBooks((current) => current.filter((book) => book.id !== bookId));
+      setPendingBooks((current) =>
+        current.filter((book) => book.id !== bookId),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete book.");
     }
   };
 
   const handleUpdateOrderStatus = async (
-    id: string,
+    orderId: string,
     status: Order["status"],
   ) => {
+    setError("");
     try {
-      await adminService.updateOrderStatus(id, status);
-      await loadOrders();
+      const updated = await adminService.updateOrderStatus(orderId, status);
+      setOrders((current) =>
+        current.map((order) => (order.id === updated.id ? updated : order)),
+      );
     } catch (err) {
-      console.error("Failed to update order status:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to update the order.",
+      );
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm("Delete this user account?")) return;
+
+    setError("");
+    try {
+      await adminService.deleteUser(userId);
+      setUsers((current) => current.filter((entry) => entry.id !== userId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete user.");
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!categoryForm.name.trim()) return;
+
+    setError("");
+    try {
+      const created = await adminService.createCategory(
+        categoryForm.name.trim(),
+        categoryForm.description.trim() || undefined,
+      );
+      setCategories((current) => [...current, created]);
+      setCategoryForm({ name: "", description: "" });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to create category.",
+      );
+    }
+  };
+
+  const handleAddBook = async () => {
+    if (
+      !newBookForm.title ||
+      !newBookForm.author ||
+      !newBookForm.categoryId ||
+      !newBookForm.price ||
+      !newBookForm.stock
+    )
+      return;
+
+    setError("");
+    try {
+      await adminService.addBook({
+        title: newBookForm.title,
+        author: newBookForm.author,
+        categoryId: newBookForm.categoryId,
+        price: Number(newBookForm.price),
+        stock: Number(newBookForm.stock),
+        description: newBookForm.description,
+        image: newBookForm.image || undefined,
+      });
+      setNewBookForm({
+        title: "",
+        author: "",
+        categoryId: "",
+        price: "",
+        stock: "",
+        description: "",
+        image: "",
+      });
+      setBooks(await adminService.getAllBooks());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add book.");
     }
   };
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col md:flex-row">
-      {/* ADMIN SIDEBAR */}
-      <aside className="w-full md:w-64 bg-[var(--color-brand-dark-blue)] text-white flex-shrink-0 relative z-10 md:min-h-[calc(100vh-80px)] hidden md:flex flex-col">
+      <aside className="w-full md:w-72 bg-[var(--color-brand-dark-blue)] text-white flex-shrink-0">
         <div className="p-6 border-b border-white/10 flex items-center gap-3">
           <ShieldCheck className="w-6 h-6 text-[var(--color-brand-muted-orange)]" />
           <span className="font-bold text-lg tracking-tight uppercase">
@@ -165,7 +285,7 @@ export const AdminDashboard = () => {
           </span>
         </div>
         <nav className="flex-1 py-6 px-3 space-y-1">
-          {MENU.map((item) => (
+          {menu.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
@@ -176,7 +296,11 @@ export const AdminDashboard = () => {
               }`}
             >
               <item.icon
-                className={`w-5 h-5 ${activeTab === item.id ? "text-[var(--color-brand-muted-orange)]" : ""}`}
+                className={`w-5 h-5 ${
+                  activeTab === item.id
+                    ? "text-[var(--color-brand-muted-orange)]"
+                    : ""
+                }`}
               />
               {item.label}
             </button>
@@ -191,9 +315,7 @@ export const AdminDashboard = () => {
               <p className="font-medium line-clamp-1">
                 {user?.name || "Admin User"}
               </p>
-              <p className="text-gray-400 text-xs">
-                {user?.role || "Superadmin"}
-              </p>
+              <p className="text-gray-400 text-xs">{user?.role || "ADMIN"}</p>
             </div>
           </div>
           <button
@@ -205,476 +327,542 @@ export const AdminDashboard = () => {
         </div>
       </aside>
 
-      {/* ADMIN TOPBAR FOR MOBILE (Optional, skipping full mobile admin menu for brevity, keeping simple horizontal scroll if needed) */}
-
-      {/* ADMIN MAIN CONTENT */}
-      <main className="flex-1 p-6 md:p-8 w-full overflow-hidden">
-        {/* Header Search */}
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <h1 className="text-2xl font-bold text-[var(--color-brand-dark-blue)] capitalize">
-            {activeTab.replace("-", " ")}
-          </h1>
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-muted-orange)]"
-            />
+      <main className="flex-1 p-6 md:p-8 w-full">
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--color-brand-dark-blue)] capitalize">
+              {activeTab}
+            </h1>
+            <p className="text-gray-500">Run the marketplace from one place.</p>
           </div>
-        </header>
+          {isLoading && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         {activeTab === "overview" && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              {isLoading ? (
-                <div className="col-span-4 flex justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                {
+                  label: "Total sales",
+                  value: `$${stats.totalSales.toFixed(2)}`,
+                },
+                { label: "Total orders", value: stats.totalOrders },
+                { label: "Paid orders", value: stats.paidOrders },
+                { label: "Total books", value: stats.totalBooks },
+                { label: "Pending approvals", value: stats.pendingApproval },
+                { label: "Total users", value: stats.totalUsers },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+                >
+                  <p className="text-sm text-gray-500 mb-2">{stat.label}</p>
+                  <h3 className="text-3xl font-black text-[var(--color-brand-dark-blue)]">
+                    {stat.value}
+                  </h3>
                 </div>
-              ) : stats ? (
-                [
-                  {
-                    title: "Total Sales",
-                    value: `$${stats.totalSales.toFixed(0)}`,
-                    icon: BarChart3,
-                  },
-                  {
-                    title: "Active Users",
-                    value: String(stats.activeUsers),
-                    icon: Users,
-                  },
-                  {
-                    title: "Total Books",
-                    value: String(stats.totalBooks),
-                    icon: BookOpen,
-                  },
-                  {
-                    title: "Pending Approval",
-                    value: String(stats.pendingApproval),
-                    icon: CheckCircle,
-                  },
-                ].map((stat, i) => (
-                  <div
-                    key={i}
-                    className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-[var(--color-brand-cream)] flex items-center justify-center">
-                        <stat.icon className="w-5 h-5 text-[var(--color-brand-muted-orange)]" />
-                      </div>
-                    </div>
-                    <p className="text-gray-500 font-medium text-sm mb-1">
-                      {stat.title}
-                    </p>
-                    <h3 className="text-3xl font-black text-[var(--color-brand-dark-blue)] tracking-tight">
-                      {stat.value}
-                    </h3>
-                  </div>
-                ))
-              ) : null}
+              ))}
             </div>
 
-            {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Pending Approvals */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-                  <h3 className="font-bold text-[var(--color-brand-dark-blue)]">
-                    Needs Approval
-                  </h3>
-                  <button
+            <div className="grid lg:grid-cols-2 gap-6">
+              <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-[var(--color-brand-dark-blue)]">
+                    Listings awaiting approval
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setActiveTab("approvals")}
-                    className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline"
                   >
-                    View All
-                  </button>
+                    Open queue
+                  </Button>
                 </div>
-                <div className="p-0 overflow-x-auto">
-                  {pendingBooks.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500 text-sm">
-                      No pending listings
+                <div className="space-y-4">
+                  {pendingBooks.slice(0, 4).map((book) => (
+                    <div
+                      key={book.id}
+                      className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4 last:border-0 last:pb-0"
+                    >
+                      <div>
+                        <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                          {book.title}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {book.seller?.name || "Unknown seller"} • $
+                          {book.price.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleApproveBook(book.id, "REJECTED")}
+                        >
+                          Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleApproveBook(book.id, "APPROVED")}
+                        >
+                          Approve
+                        </Button>
+                      </div>
                     </div>
-                  ) : (
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
-                        <tr>
-                          <th className="px-5 py-3">Book</th>
-                          <th className="px-5 py-3">Seller</th>
-                          <th className="px-5 py-3 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {pendingBooks.map((item) => (
-                          <tr key={item.id} className="hover:bg-gray-50/50">
-                            <td className="px-5 py-4">
-                              <p className="font-semibold text-[var(--color-brand-dark-blue)] line-clamp-1">
-                                {item.title}
-                              </p>
-                              <p className="text-gray-500 text-xs">
-                                {item.condition} • ${item.price.toFixed(2)}
-                              </p>
-                            </td>
-                            <td className="px-5 py-4 text-gray-600">
-                              {item.seller?.name ?? "Unknown"}
-                            </td>
-                            <td className="px-5 py-4 text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 px-3 text-xs w-auto"
-                                  onClick={() =>
-                                    handleApproveBook(item.id, "REJECTED")
-                                  }
-                                >
-                                  Reject
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className="h-8 px-3 text-xs w-auto bg-emerald-600 hover:bg-emerald-700"
-                                  onClick={() =>
-                                    handleApproveBook(item.id, "APPROVED")
-                                  }
-                                >
-                                  Approve
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  ))}
+                  {!pendingBooks.length && (
+                    <p className="text-sm text-gray-500">
+                      No listings are waiting right now.
+                    </p>
                   )}
                 </div>
-              </div>
+              </section>
 
-              {/* Recent Orders */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-                  <h3 className="font-bold text-[var(--color-brand-dark-blue)]">
-                    Recent Orders
-                  </h3>
-                  <button
+              <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-[var(--color-brand-dark-blue)]">
+                    Recent orders
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setActiveTab("orders")}
-                    className="text-xs font-bold text-[var(--color-brand-muted-orange)] hover:underline"
                   >
-                    View All
-                  </button>
+                    Open orders
+                  </Button>
                 </div>
-                <div className="p-0 overflow-x-auto">
-                  {orders.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500 text-sm">
-                      No orders yet
+                <div className="space-y-4">
+                  {orders.slice(0, 4).map((order) => (
+                    <div
+                      key={order.id}
+                      className="border-b border-gray-100 pb-4 last:border-0 last:pb-0"
+                    >
+                      <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                        Order #{order.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {order.user?.name} • {order.status} • $
+                        {order.totalAmount.toFixed(2)}
+                      </p>
                     </div>
-                  ) : (
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
-                        <tr>
-                          <th className="px-5 py-3">Order ID</th>
-                          <th className="px-5 py-3">Total</th>
-                          <th className="px-5 py-3 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {orders.map((order) => (
-                          <tr key={order.id} className="hover:bg-gray-50/50">
-                            <td className="px-5 py-4">
-                              <p className="font-semibold text-[var(--color-brand-dark-blue)]">
-                                #{order.id.slice(0, 8).toUpperCase()}
-                              </p>
-                              <p className="text-gray-500 text-xs">
-                                {order.user?.name ?? "Unknown"}
-                              </p>
-                            </td>
-                            <td className="px-5 py-4 font-medium">
-                              ${order.totalAmount.toFixed(2)}
-                            </td>
-                            <td className="px-5 py-4 text-right">
-                              <span
-                                className={`px-2 py-1 rounded text-xs font-bold inline-block ${
-                                  order.status === "DELIVERED"
-                                    ? "bg-emerald-50 text-emerald-600"
-                                    : order.status === "SHIPPED"
-                                      ? "bg-blue-50 text-blue-600"
-                                      : "bg-amber-50 text-amber-600"
-                                }`}
-                              >
-                                {order.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  ))}
+                  {!orders.length && (
+                    <p className="text-sm text-gray-500">
+                      Orders will appear here as soon as buyers check out.
+                    </p>
                   )}
                 </div>
-              </div>
+              </section>
             </div>
           </div>
         )}
 
-        {/* Fallback for other tabs */}
-        {activeTab === "books" && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">
-              All Books
-            </h2>
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+        {activeTab === "inventory" && (
+          <div className="grid xl:grid-cols-[1.1fr_0.9fr] gap-6">
+            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-bold text-[var(--color-brand-dark-blue)]">
+                  Inventory and marketplace listings
+                </h2>
+                <span className="text-sm text-gray-500">
+                  {books.length} books
+                </span>
               </div>
-            ) : allBooks.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
-                <p className="text-gray-500">No books found.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
-                    <tr>
-                      <th className="px-5 py-3">Title</th>
-                      <th className="px-5 py-3">Author</th>
-                      <th className="px-5 py-3">Price</th>
-                      <th className="px-5 py-3">Stock</th>
-                      <th className="px-5 py-3">Type</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {allBooks.map((book) => (
-                      <tr key={book.id} className="hover:bg-gray-50/50">
-                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">
-                          {book.title}
-                        </td>
-                        <td className="px-5 py-4 text-gray-600">
-                          {book.author}
-                        </td>
-                        <td className="px-5 py-4">${book.price.toFixed(2)}</td>
-                        <td className="px-5 py-4">{book.stock}</td>
-                        <td className="px-5 py-4">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-bold ${book.isUsed ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]" : "bg-[var(--color-brand-muted-orange)]/10 text-[var(--color-brand-muted-orange)]"}`}
-                          >
-                            {book.isUsed ? "Used" : "New"}
+              <div className="space-y-4">
+                {books.map((book) => (
+                  <div
+                    key={book.id}
+                    className="border border-gray-100 rounded-2xl p-4"
+                  >
+                    <div className="flex flex-col lg:flex-row justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                            {book.title}
+                          </p>
+                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                            {book.isUsed ? book.condition : "NEW"}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          {book.approvalStatus && (
+                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
+                              {book.approvalStatus}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {book.author} • {book.category?.name} • Stock{" "}
+                          {book.stock}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Seller: {book.seller?.name || "Store inventory"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {book.isUsed && book.approvalStatus === "PENDING" && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleApproveBook(book.id, "APPROVED")
+                            }
+                          >
+                            Approve
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          onClick={() => handleDeleteBook(book.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {!books.length && (
+                  <p className="text-sm text-gray-500">
+                    No books found in inventory yet.
+                  </p>
+                )}
               </div>
-            )}
+            </section>
+
+            <section className="space-y-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <PlusCircle className="w-5 h-5 text-emerald-600" />
+                  <h2 className="font-bold text-[var(--color-brand-dark-blue)]">
+                    Add store inventory
+                  </h2>
+                </div>
+                <div className="space-y-4">
+                  <Input
+                    label="Title"
+                    value={newBookForm.title}
+                    onChange={(event) =>
+                      setNewBookForm((current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    label="Author"
+                    value={newBookForm.author}
+                    onChange={(event) =>
+                      setNewBookForm((current) => ({
+                        ...current,
+                        author: event.target.value,
+                      }))
+                    }
+                  />
+                  <Select
+                    label="Category"
+                    value={newBookForm.categoryId}
+                    onChange={(event) =>
+                      setNewBookForm((current) => ({
+                        ...current,
+                        categoryId: event.target.value,
+                      }))
+                    }
+                    options={categories.map((category) => ({
+                      value: category.id,
+                      label: category.name,
+                    }))}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Price"
+                      type="number"
+                      value={newBookForm.price}
+                      onChange={(event) =>
+                        setNewBookForm((current) => ({
+                          ...current,
+                          price: event.target.value,
+                        }))
+                      }
+                    />
+                    <Input
+                      label="Stock"
+                      type="number"
+                      value={newBookForm.stock}
+                      onChange={(event) =>
+                        setNewBookForm((current) => ({
+                          ...current,
+                          stock: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <Input
+                    label="Image URL"
+                    value={newBookForm.image}
+                    onChange={(event) =>
+                      setNewBookForm((current) => ({
+                        ...current,
+                        image: event.target.value,
+                      }))
+                    }
+                  />
+                  <Textarea
+                    label="Description"
+                    value={newBookForm.description}
+                    onChange={(event) =>
+                      setNewBookForm((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
+                    }
+                  />
+                  <Button onClick={handleAddBook}>Add book</Button>
+                </div>
+              </div>
+            </section>
           </div>
         )}
 
         {activeTab === "approvals" && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">
-              Pending Listings
-            </h2>
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+          <div className="space-y-4">
+            {pendingBooks.map((book) => (
+              <div
+                key={book.id}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
+              >
+                <div className="flex flex-col lg:flex-row justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                      {book.title}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {book.author} • {book.category?.name} • $
+                      {book.price.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Seller: {book.seller?.name || "Unknown"}
+                    </p>
+                    {book.description && (
+                      <p className="text-sm text-gray-600 mt-3">
+                        {book.description}
+                      </p>
+                    )}
+                    {book.sellerNotes && (
+                      <p className="text-sm text-gray-600 mt-2">
+                        Notes: {book.sellerNotes}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleApproveBook(book.id, "REJECTED")}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleApproveBook(book.id, "APPROVED")}
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                </div>
               </div>
-            ) : pendingBooks.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
-                <p className="text-gray-500">No pending listings to review.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
-                    <tr>
-                      <th className="px-5 py-3">Book</th>
-                      <th className="px-5 py-3">Seller</th>
-                      <th className="px-5 py-3">Price</th>
-                      <th className="px-5 py-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {pendingBooks.map((book) => (
-                      <tr key={book.id} className="hover:bg-gray-50/50">
-                        <td className="px-5 py-4">
-                          <p className="font-semibold text-[var(--color-brand-dark-blue)]">
-                            {book.title}
-                          </p>
-                          <p className="text-gray-500 text-xs">
-                            {book.condition} • {book.author}
-                          </p>
-                        </td>
-                        <td className="px-5 py-4 text-gray-600">
-                          {book.seller?.name ?? "Unknown"}
-                        </td>
-                        <td className="px-5 py-4">${book.price.toFixed(2)}</td>
-                        <td className="px-5 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-3 text-xs"
-                              onClick={() =>
-                                handleApproveBook(book.id, "REJECTED")
-                              }
-                            >
-                              Reject
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-700"
-                              onClick={() =>
-                                handleApproveBook(book.id, "APPROVED")
-                              }
-                            >
-                              Approve
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            ))}
+            {!pendingBooks.length && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-gray-500">
+                There are no used-book approvals waiting right now.
               </div>
             )}
           </div>
         )}
 
         {activeTab === "orders" && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">
-              All Orders
-            </h2>
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+          <div className="space-y-4">
+            {orders.map((order) => (
+              <div
+                key={order.id}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
+              >
+                <div className="flex flex-col xl:flex-row justify-between gap-6">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                        Order #{order.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {order.user?.name} • {order.user?.email}
+                      </p>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <p>
+                        Ship to: {order.shippingFullName},{" "}
+                        {order.shippingAddressLine1}, {order.shippingCity},{" "}
+                        {order.shippingState} {order.shippingPostalCode}
+                      </p>
+                      <p>
+                        Payment: {order.paymentStatus}
+                        {order.paymentReference
+                          ? ` • ${order.paymentReference}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {order.items.map((item) => (
+                        <p key={item.id} className="text-sm text-gray-600">
+                          {item.quantity}x {item.book?.title} at $
+                          {item.price.toFixed(2)}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3 min-w-56">
+                    <div className="text-right">
+                      <p className="text-2xl font-black text-[var(--color-brand-dark-blue)]">
+                        ${order.totalAmount.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-gray-500">{order.status}</p>
+                    </div>
+                    <Select
+                      label="Update Status"
+                      value={order.status}
+                      onChange={(event) =>
+                        handleUpdateOrderStatus(
+                          order.id,
+                          event.target.value as Order["status"],
+                        )
+                      }
+                      options={ORDER_STATUS_OPTIONS}
+                    />
+                  </div>
+                </div>
               </div>
-            ) : orders.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
-                <p className="text-gray-500">No orders yet.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
-                    <tr>
-                      <th className="px-5 py-3">Order</th>
-                      <th className="px-5 py-3">Customer</th>
-                      <th className="px-5 py-3">Total</th>
-                      <th className="px-5 py-3">Payment</th>
-                      <th className="px-5 py-3">Status</th>
-                      <th className="px-5 py-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {orders.map((order) => (
-                      <tr key={order.id} className="hover:bg-gray-50/50">
-                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">
-                          #{order.id.slice(0, 8).toUpperCase()}
-                        </td>
-                        <td className="px-5 py-4 text-gray-600">
-                          {order.user?.name ?? "Unknown"}
-                        </td>
-                        <td className="px-5 py-4">
-                          ${order.totalAmount.toFixed(2)}
-                        </td>
-                        <td className="px-5 py-4">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-bold ${order.paymentStatus === "COMPLETED" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}
-                          >
-                            {order.paymentStatus}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-bold ${order.status === "DELIVERED" ? "bg-emerald-50 text-emerald-600" : order.status === "SHIPPED" ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"}`}
-                          >
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <select
-                            value={order.status}
-                            onChange={(e) =>
-                              handleUpdateOrderStatus(
-                                order.id,
-                                e.target.value as Order["status"],
-                              )
-                            }
-                            className="text-xs border rounded px-2 py-1"
-                          >
-                            <option value="PENDING">Pending</option>
-                            <option value="SHIPPED">Shipped</option>
-                            <option value="DELIVERED">Delivered</option>
-                            <option value="CANCELLED">Cancelled</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            ))}
+            {!orders.length && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-gray-500">
+                Orders will appear here after checkout activity.
               </div>
             )}
           </div>
         )}
 
         {activeTab === "users" && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)]">
-              All Users
-            </h2>
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-brand-muted-orange)]" />
+          <div className="space-y-4">
+            {users.map((entry) => (
+              <div
+                key={entry.id}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
+              >
+                <div className="flex flex-col lg:flex-row justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                        {entry.name}
+                      </p>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          entry.role === "ADMIN"
+                            ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {entry.role}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500">{entry.email}</p>
+                    <p className="text-sm text-gray-500">
+                      Orders: {entry._count?.orders || 0} • Reviews:{" "}
+                      {entry._count?.reviews || 0} • Listings:{" "}
+                      {entry._count?.listedBooks || 0}
+                    </p>
+                  </div>
+                  {entry.role !== "ADMIN" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => handleDeleteUser(entry.id)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete user
+                    </Button>
+                  )}
+                </div>
               </div>
-            ) : users.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
-                <p className="text-gray-500">No users found.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50/50 text-gray-500 font-medium text-xs uppercase">
-                    <tr>
-                      <th className="px-5 py-3">Name</th>
-                      <th className="px-5 py-3">Email</th>
-                      <th className="px-5 py-3">Role</th>
-                      <th className="px-5 py-3">Joined</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {users.map((u) => (
-                      <tr key={u.id} className="hover:bg-gray-50/50">
-                        <td className="px-5 py-4 font-medium text-[var(--color-brand-dark-blue)]">
-                          {u.name}
-                        </td>
-                        <td className="px-5 py-4 text-gray-600">{u.email}</td>
-                        <td className="px-5 py-4">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-bold ${u.role === "ADMIN" ? "bg-[var(--color-brand-dark-blue)]/10 text-[var(--color-brand-dark-blue)]" : "bg-gray-100 text-gray-600"}`}
-                          >
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-gray-500">
-                          {new Date(u.createdAt).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            ))}
           </div>
         )}
 
         {activeTab === "settings" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center justify-center animate-in fade-in duration-500">
-            <MoreVertical className="w-12 h-12 text-gray-300 mb-4" />
-            <h2 className="text-xl font-bold text-[var(--color-brand-dark-blue)] mb-2">
-              Settings
-            </h2>
-            <p className="text-gray-500 max-w-md">
-              Platform settings will be available in a future update.
-            </p>
+          <div className="grid xl:grid-cols-2 gap-6">
+            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <Layers3 className="w-5 h-5 text-[var(--color-brand-muted-orange)]" />
+                <h2 className="font-bold text-[var(--color-brand-dark-blue)]">
+                  Categories
+                </h2>
+              </div>
+              <div className="space-y-4 mb-6">
+                {categories.map((category) => (
+                  <div
+                    key={category.id}
+                    className="rounded-2xl border border-gray-100 p-4"
+                  >
+                    <p className="font-semibold text-[var(--color-brand-dark-blue)]">
+                      {category.name}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {category.description || "No description"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <PlusCircle className="w-5 h-5 text-emerald-600" />
+                <h2 className="font-bold text-[var(--color-brand-dark-blue)]">
+                  Create category
+                </h2>
+              </div>
+              <div className="space-y-4">
+                <Input
+                  label="Name"
+                  value={categoryForm.name}
+                  onChange={(event) =>
+                    setCategoryForm((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                />
+                <Textarea
+                  label="Description"
+                  value={categoryForm.description}
+                  onChange={(event) =>
+                    setCategoryForm((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
+                  }
+                />
+                <Button onClick={handleAddCategory}>Create category</Button>
+              </div>
+            </section>
           </div>
         )}
       </main>

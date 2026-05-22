@@ -1,5 +1,10 @@
 import api from "./api";
-import type { Book } from "./bookService";
+import {
+  bookService,
+  type Book,
+  type BookFilters,
+  type BookPayload,
+} from "./bookService";
 import type { Order } from "./orderService";
 
 export interface AdminUser {
@@ -18,34 +23,33 @@ export interface Category {
 }
 
 export const adminService = {
-  // --- Books ---
-  async getAllBooks(): Promise<Book[]> {
-    const res = await api.get<Book[]>("/books");
-    return res.data;
+  async getAllBooks(filters?: BookFilters): Promise<Book[]> {
+    return bookService.getAdminBooks(filters);
   },
 
   async getPendingBooks(): Promise<Book[]> {
-    const res = await api.get<Book[]>("/books/admin/pending");
-    return res.data;
+    return bookService.getPendingBooks();
   },
 
   async approveBook(
     id: string,
     status: "APPROVED" | "REJECTED",
   ): Promise<{ book: Book; message: string }> {
-    const res = await api.patch<{ book: Book; message: string }>(
-      `/books/admin/${id}/approve`,
-      { status },
-    );
-    return res.data;
+    return bookService.approveBook(id, status);
   },
 
-  async addBook(data: Record<string, unknown>): Promise<Book> {
-    const res = await api.post<Book>("/books", data);
-    return res.data;
+  async addBook(data: BookPayload): Promise<Book> {
+    return bookService.createBook(data);
   },
 
-  // --- Orders ---
+  async updateBook(id: string, data: Partial<BookPayload>): Promise<Book> {
+    return bookService.updateBook(id, data);
+  },
+
+  async deleteBook(id: string): Promise<{ message: string }> {
+    return bookService.deleteBook(id);
+  },
+
   async getAllOrders(): Promise<Order[]> {
     const res = await api.get<Order[]>("/orders/all");
     return res.data;
@@ -59,7 +63,6 @@ export const adminService = {
     return res.data;
   },
 
-  // --- Users ---
   async getAllUsers(): Promise<AdminUser[]> {
     const res = await api.get<AdminUser[]>("/user/all");
     return res.data;
@@ -69,7 +72,6 @@ export const adminService = {
     await api.delete(`/user/${id}`);
   },
 
-  // --- Categories ---
   async getCategories(): Promise<Category[]> {
     const res = await api.get<Category[]>("/categories");
     return res.data;

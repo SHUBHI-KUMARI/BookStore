@@ -29,8 +29,8 @@ export class ReviewController {
       const { bookId } = req.params;
       const { rating, comment } = req.body;
 
-      if (!rating || !comment) {
-        res.status(400).json({ message: 'Rating and comment are required' });
+      if (!rating) {
+        res.status(400).json({ message: 'Rating is required' });
         return;
       }
 

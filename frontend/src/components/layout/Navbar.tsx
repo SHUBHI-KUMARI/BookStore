@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ShoppingCart,
   User,
@@ -16,9 +17,11 @@ export const Navbar = () => {
   const { itemCount } = useCart();
   const navigate = useNavigate();
   const firstName = user?.name?.trim().split(/\\s+/)[0] || "Reader";
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
+    setIsMobileMenuOpen(false);
     navigate("/");
   };
 
@@ -130,11 +133,67 @@ export const Navbar = () => {
                 </span>
               )}
             </Link>
-            <button className="text-slate-600 hover:text-slate-900 p-2 bg-slate-100 rounded-full">
+            <button
+              className="text-slate-600 hover:text-slate-900 p-2 bg-slate-100 rounded-full"
+              onClick={() => setIsMobileMenuOpen((current) => !current)}
+            >
               <Menu className="h-5 w-5" />
             </button>
           </div>
         </div>
+
+        {isMobileMenuOpen && (
+          <div className="md:hidden pb-4 border-t border-slate-100">
+            <div className="flex flex-col gap-2 pt-4">
+              <Link
+                to="/books"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100"
+              >
+                New Arrivals
+              </Link>
+              <Link
+                to="/books?isUsed=true"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100"
+              >
+                Used Books
+              </Link>
+              <Link
+                to="/sell"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl text-amber-700 bg-amber-50 hover:bg-amber-100"
+              >
+                Sell Yours
+              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    to={user?.role === "ADMIN" ? "/admin" : "/dashboard"}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100"
+                  >
+                    {user?.role === "ADMIN" ? "Admin Panel" : "Dashboard"}
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-2 rounded-xl text-left text-red-600 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100"
+                >
+                  Sign In
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

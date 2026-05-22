@@ -52,11 +52,7 @@ export const Books = () => {
 
   // Parse isUsed from URL
   const isUsedParam = searchParams.get("isUsed");
-  useEffect(() => {
-    if (isUsedParam === "true") {
-      setActiveCondition("GOOD"); // Default to showing used books
-    }
-  }, [isUsedParam]);
+  const showUsedOnly = isUsedParam === "true";
 
   // Sync filters to URL
   useEffect(() => {
@@ -65,13 +61,13 @@ export const Books = () => {
     if (activeCategory) params.set("category", activeCategory);
     if (activeCondition && activeCondition !== "NEW")
       params.set("condition", activeCondition);
-    if (isUsedParam === "true") params.set("isUsed", "true");
+    if (showUsedOnly) params.set("isUsed", "true");
     setSearchParams(params, { replace: true });
   }, [
     searchQuery,
     activeCategory,
     activeCondition,
-    isUsedParam,
+    showUsedOnly,
     setSearchParams,
   ]);
 
@@ -106,10 +102,9 @@ export const Books = () => {
       if (activeCategory) filters.category = activeCategory;
       if (activeCondition) {
         filters.condition = activeCondition;
-        if (activeCondition !== "NEW") {
-          filters.isUsed = true;
-        }
+        if (activeCondition !== "NEW") filters.isUsed = true;
       }
+      if (showUsedOnly) filters.isUsed = true;
 
       const data = await bookService.getAll(filters);
 
@@ -162,6 +157,7 @@ export const Books = () => {
     searchQuery,
     activeCategory,
     activeCondition,
+    showUsedOnly,
     minPrice,
     maxPrice,
     minRating,

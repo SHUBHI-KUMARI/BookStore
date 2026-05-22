@@ -1,11 +1,7 @@
+import { OrderStatus } from '@prisma/client';
 import { Response } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { OrderService } from '../services/OrderService';
-import { OrderStatus } from '@prisma/client';
-import { CreditCardPayment } from '../services/payments/CreditCardPayment';
-import { UpiPayment } from '../services/payments/UpiPayment';
-import { WalletPayment } from '../services/payments/WalletPayment';
-import { PaymentStrategy } from '../interfaces/PaymentStrategy';
 
 export class OrderController {
   private orderService: OrderService;
@@ -22,14 +18,14 @@ export class OrderController {
         return;
       }
 
-      const order = await this.orderService.createOrderFromCart(userId);
+      const order = await this.orderService.createOrderFromCart(userId, req.body);
       res.status(201).json(order);
     } catch (error) {
       res.status(400).json({ message: 'Failed to create order', error: (error as Error).message });
     }
   };
 
-  public getAllOrders = async (req: AuthRequest, res: Response): Promise<void> => {
+  public getAllOrders = async (_req: AuthRequest, res: Response): Promise<void> => {
     try {
       const orders = await this.orderService.getAllOrders();
       res.status(200).json(orders);
@@ -55,50 +51,38 @@ export class OrderController {
     }
   };
 
-  /**
-   * Process payment for a specific order.
-   * Accepts `method` field to select payment strategy: CREDIT_CARD | UPI | WALLET
-   */
   public processPayment = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
+      const userId = req.user?.userId;
       const { orderId } = req.params;
-      const { method, cardNumber, expiryDate, cvv, upiId, walletId } = req.body;
 
-      let strategy: PaymentStrategy;
-
-      switch ((method as string)?.toUpperCase()) {
-        case 'UPI':
-          if (!upiId) {
-            res.status(400).json({ message: 'UPI ID is required for UPI payment' });
-            return;
-          }
-          strategy = new UpiPayment(upiId);
-          break;
-        case 'WALLET':
-          if (!walletId) {
-            res.status(400).json({ message: 'Wallet ID is required for wallet payment' });
-            return;
-          }
-          strategy = new WalletPayment(walletId);
-          break;
-        case 'CREDIT_CARD':
-        default:
-          if (!cardNumber || !expiryDate || !cvv) {
-            res.status(400).json({ message: 'Card details are required for credit card payment' });
-            return;
-          }
-          strategy = new CreditCardPayment(cardNumber, expiryDate, cvv);
-          break;
+      if (!userId) {
+        res.status(401).json({ message: 'User ID is missing from token' });
+        return;
       }
 
-      const success = await this.orderService.processPayment(orderId as string, strategy);
-      if (success) {
-        res.status(200).json({ message: 'Payment successful, order shipped' });
-      } else {
-        res.status(400).json({ message: 'Payment failed' });
-      }
+      const order = await this.orderService.processPayment(orderId as string, userId, req.body);
+      res.status(200).json({
+        message: 'Mock payment completed successfully',
+        order,
+      });
     } catch (error) {
       res.status(400).json({ message: 'Payment error', error: (error as Error).message });
+    }
+  };
+
+  public cancelOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ message: 'User ID is missing from token' });
+        return;
+      }
+
+      const order = await this.orderService.cancelOrder(req.params.orderId as string, userId);
+      res.status(200).json(order);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to cancel order', error: (error as Error).message });
     }
   };
 

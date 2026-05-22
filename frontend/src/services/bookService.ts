@@ -1,5 +1,14 @@
 import api from "./api";
 
+export interface Review {
+  id: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  user?: { id: string; name: string };
+  book?: { id: string; title: string; author: string };
+}
+
 export interface Book {
   id: string;
   title: string;
@@ -13,6 +22,7 @@ export interface Book {
   language?: string | null;
   publishedAt?: string | null;
   description?: string | null;
+  sellerNotes?: string | null;
   isUsed: boolean;
   condition: "NEW" | "GOOD" | "FAIR" | "POOR";
   approvalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
@@ -24,14 +34,7 @@ export interface Book {
   seller?: { id: string; name: string; email: string } | null;
   reviews?: Review[];
   averageRating?: number;
-}
-
-export interface Review {
-  id: string;
-  rating: number;
-  comment?: string;
-  createdAt: string;
-  user?: { id: string; name: string };
+  reviewCount?: number;
 }
 
 export interface BookFilters {
@@ -39,17 +42,47 @@ export interface BookFilters {
   category?: string;
   condition?: string;
   isUsed?: boolean;
+  approvalStatus?: "PENDING" | "APPROVED" | "REJECTED";
 }
+
+export interface BookPayload {
+  title: string;
+  author: string;
+  categoryId: string;
+  price: number;
+  stock: number;
+  description?: string;
+  image?: string;
+  condition?: Book["condition"];
+  sellerNotes?: string;
+}
+
+const buildParams = (filters?: BookFilters) => {
+  const params = new URLSearchParams();
+
+  if (filters?.q) params.append("q", filters.q);
+  if (filters?.category) params.append("category", filters.category);
+  if (filters?.condition) params.append("condition", filters.condition);
+  if (filters?.isUsed !== undefined)
+    params.append("isUsed", String(filters.isUsed));
+  if (filters?.approvalStatus)
+    params.append("approvalStatus", filters.approvalStatus);
+
+  return params.toString();
+};
 
 export const bookService = {
   async getAll(filters?: BookFilters): Promise<Book[]> {
-    const params = new URLSearchParams();
-    if (filters?.q) params.append("q", filters.q);
-    if (filters?.category) params.append("category", filters.category);
-    if (filters?.condition) params.append("condition", filters.condition);
-    if (filters?.isUsed !== undefined)
-      params.append("isUsed", String(filters.isUsed));
-    const res = await api.get<Book[]>(`/books?${params.toString()}`);
+    const query = buildParams(filters);
+    const res = await api.get<Book[]>(`/books${query ? `?${query}` : ""}`);
+    return res.data;
+  },
+
+  async getAdminBooks(filters?: BookFilters): Promise<Book[]> {
+    const query = buildParams(filters);
+    const res = await api.get<Book[]>(
+      `/books/admin/all${query ? `?${query}` : ""}`,
+    );
     return res.data;
   },
 
@@ -58,8 +91,18 @@ export const bookService = {
     return res.data;
   },
 
-  async createBook(data: Record<string, unknown>): Promise<Book> {
+  async createBook(data: BookPayload): Promise<Book> {
     const res = await api.post<Book>("/books", data);
+    return res.data;
+  },
+
+  async updateBook(id: string, data: Partial<BookPayload>): Promise<Book> {
+    const res = await api.patch<Book>(`/books/${id}`, data);
+    return res.data;
+  },
+
+  async deleteBook(id: string): Promise<{ message: string }> {
+    const res = await api.delete<{ message: string }>(`/books/${id}`);
     return res.data;
   },
 

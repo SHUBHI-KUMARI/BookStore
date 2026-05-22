@@ -18,7 +18,8 @@ const Login = () => {
     setIsSubmitting(true);
     try {
       await login({ email, password });
-      navigate("/");
+      const role = JSON.parse(localStorage.getItem("user") || "{}")?.role;
+      navigate(role === "ADMIN" ? "/admin" : "/dashboard");
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
     } finally {

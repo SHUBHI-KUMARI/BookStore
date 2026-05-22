@@ -27,6 +27,7 @@ class OrderRoutes {
 
     // Protected: Pay for Order (Any Customer can pay for their order)
     this.router.post('/:orderId/pay', authenticateJWT, this.orderController.processPayment);
+    this.router.put('/:orderId/cancel', authenticateJWT, this.orderController.cancelOrder);
 
     // Only Admin can update order statuse (e.g. from PENDING to SHIPPED)
     this.router.put(
