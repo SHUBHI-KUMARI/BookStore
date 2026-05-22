@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Textarea } from "../components/ui/Textarea";
+import { DEMO_ACCOUNTS } from "../constants/demoAccounts";
 
 const Signup = () => {
   const [name, setName] = useState("");
@@ -13,8 +14,13 @@ const Signup = () => {
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register } = useAuth();
+  const { register, login } = useAuth();
   const navigate = useNavigate();
+
+  const navigateAfterLogin = () => {
+    const role = JSON.parse(localStorage.getItem("user") || "{}")?.role;
+    navigate(role === "ADMIN" ? "/admin" : "/dashboard");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +42,20 @@ const Signup = () => {
     }
   };
 
+  const handleDemoLogin = async (demo: (typeof DEMO_ACCOUNTS)[number]) => {
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      await login({ email: demo.email, password: demo.password });
+      navigateAfterLogin();
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl ring-1 ring-black/5">
@@ -46,6 +66,32 @@ const Signup = () => {
           <p className="mt-4 text-center text-sm text-gray-500">
             Create an account to track orders and sell your used books.
           </p>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-900 mb-3">
+            Reviewer shortcut
+          </p>
+          <p className="text-xs text-emerald-800 mb-3">
+            Skip registration and enter the seeded demo accounts in one click.
+          </p>
+          <div className="grid gap-3">
+            {DEMO_ACCOUNTS.map((demo) => (
+              <button
+                key={demo.email}
+                type="button"
+                onClick={() => void handleDemoLogin(demo)}
+                disabled={isSubmitting}
+                className="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-left transition-colors hover:bg-emerald-100 disabled:opacity-60"
+              >
+                <div className="font-semibold text-[var(--color-brand-dark-blue)]">
+                  {demo.label}
+                </div>
+                <div className="text-xs text-gray-500">{demo.roleHint}</div>
+                <div className="text-xs text-gray-500 mt-1">{demo.email}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (

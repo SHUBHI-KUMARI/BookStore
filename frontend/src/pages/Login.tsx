@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { DEMO_ACCOUNTS } from "../constants/demoAccounts";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -12,14 +13,34 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const navigateAfterLogin = () => {
+    const role = JSON.parse(localStorage.getItem("user") || "{}")?.role;
+    navigate(role === "ADMIN" ? "/admin" : "/dashboard");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
     try {
       await login({ email, password });
-      const role = JSON.parse(localStorage.getItem("user") || "{}")?.role;
-      navigate(role === "ADMIN" ? "/admin" : "/dashboard");
+      navigateAfterLogin();
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDemoLogin = async (demo: (typeof DEMO_ACCOUNTS)[number]) => {
+    setError("");
+    setEmail(demo.email);
+    setPassword(demo.password);
+    setIsSubmitting(true);
+
+    try {
+      await login({ email: demo.email, password: demo.password });
+      navigateAfterLogin();
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
     } finally {
@@ -37,6 +58,29 @@ const Login = () => {
           <p className="mt-4 text-center text-sm text-gray-500">
             Sign in to access your account, orders, and saved books.
           </p>
+        </div>
+
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900 mb-3">
+            Reviewer demo access
+          </p>
+          <div className="grid gap-3">
+            {DEMO_ACCOUNTS.map((demo) => (
+              <button
+                key={demo.email}
+                type="button"
+                onClick={() => void handleDemoLogin(demo)}
+                disabled={isSubmitting}
+                className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-left transition-colors hover:bg-amber-100 disabled:opacity-60"
+              >
+                <div className="font-semibold text-[var(--color-brand-dark-blue)]">
+                  {demo.label}
+                </div>
+                <div className="text-xs text-gray-500">{demo.roleHint}</div>
+                <div className="text-xs text-gray-500 mt-1">{demo.email}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (
