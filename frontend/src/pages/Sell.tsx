@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  CheckCircle2,
-  Info,
-  ShieldCheck,
-  Store,
-  Tag,
-} from "lucide-react";
+import { CheckCircle2, Info, ShieldCheck, Store, Tag } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
@@ -338,8 +332,9 @@ export const Sell = () => {
                   <h3 className="font-bold text-emerald-900">Approval flow</h3>
                 </div>
                 <p className="text-sm text-emerald-800">
-                  Used books start as <strong>pending</strong>. Admins review the
-                  condition, category, and notes before publishing the listing.
+                  Used books start as <strong>pending</strong>. Admins review
+                  the condition, category, and notes before publishing the
+                  listing.
                 </p>
               </div>
 
@@ -358,7 +353,9 @@ export const Sell = () => {
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
                 <div className="flex items-center gap-3 mb-3">
                   <Store className="w-5 h-5 text-slate-700" />
-                  <h3 className="font-bold text-slate-900">What happens next</h3>
+                  <h3 className="font-bold text-slate-900">
+                    What happens next
+                  </h3>
                 </div>
                 <p className="text-sm text-slate-600">
                   Once approved, buyers can add your listing to cart, check out,
