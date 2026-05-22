@@ -1,6 +1,7 @@
 import { ApprovalStatus, BookCondition, Prisma } from '@prisma/client';
 import { BookFactory } from '../utils/BookFactory';
 import { BookRepository } from '../repositories/BookRepository';
+import { CloudinaryService } from './CloudinaryService';
 
 type BookFilters = {
   query?: string;
@@ -18,9 +19,11 @@ type BookListShape = {
 
 export class BookService {
   private bookRepository: BookRepository;
+  private cloudinaryService: CloudinaryService;
 
   constructor() {
     this.bookRepository = new BookRepository();
+    this.cloudinaryService = new CloudinaryService();
   }
 
   private resolveImage(book: {
@@ -54,6 +57,18 @@ export class BookService {
     if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
       throw new Error('Invalid approval status');
     }
+  }
+
+  private async resolvePersistedImage(image?: string) {
+    if (!image) {
+      return undefined;
+    }
+
+    if (image.startsWith('data:image/')) {
+      return this.cloudinaryService.uploadBookImage(image);
+    }
+
+    return image;
   }
 
   public async getAllBooks(filters?: BookFilters) {
@@ -103,12 +118,23 @@ export class BookService {
   }
 
   public async addNewBook(data: Record<string, string | number>) {
-    const payload = BookFactory.createNewBook(data);
+    const persistedImage = await this.resolvePersistedImage(data.image as string | undefined);
+    const payload = BookFactory.createNewBook({
+      ...data,
+      ...(persistedImage ? { image: persistedImage } : {}),
+    });
     return this.bookRepository.create(payload);
   }
 
   public async addUsedBook(data: Record<string, string | number>, sellerId: string) {
-    const payload = BookFactory.createUsedBook(data, sellerId);
+    const persistedImage = await this.resolvePersistedImage(data.image as string | undefined);
+    const payload = BookFactory.createUsedBook(
+      {
+        ...data,
+        ...(persistedImage ? { image: persistedImage } : {}),
+      },
+      sellerId,
+    );
     return this.bookRepository.create(payload);
   }
 
@@ -122,6 +148,10 @@ export class BookService {
     data: Prisma.BookUpdateInput,
     options?: { resetApproval?: boolean },
   ) {
+    if (typeof data.image === 'string') {
+      data.image = await this.resolvePersistedImage(data.image);
+    }
+
     if (options?.resetApproval) {
       data.approvalStatus = ApprovalStatus.PENDING;
     }

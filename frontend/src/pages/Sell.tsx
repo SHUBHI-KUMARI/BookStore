@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Info, ShieldCheck, Store, Tag } from "lucide-react";
+import {
+  CheckCircle2,
+  Info,
+  ShieldCheck,
+  Store,
+  Tag,
+} from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
@@ -17,6 +23,7 @@ const CONDITION_OPTIONS = [
 export const Sell = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [selectedImageName, setSelectedImageName] = useState("");
   const [categories, setCategories] = useState<
     Array<{ value: string; label: string }>
   >([{ value: "", label: "Select a category" }]);
@@ -76,6 +83,7 @@ export const Sell = () => {
       sellerNotes: "",
       image: "",
     });
+    setSelectedImageName("");
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -107,6 +115,40 @@ export const Sell = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      setFormData((current) => ({ ...current, image: "" }));
+      setSelectedImageName("");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Please upload an image smaller than 5MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setError("");
+    setSelectedImageName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData((current) => ({
+        ...current,
+        image: typeof reader.result === "string" ? reader.result : "",
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   if (isSuccess) {
@@ -219,7 +261,7 @@ export const Sell = () => {
                 />
               </div>
 
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 gap-6">
                 <Input
                   label="Price ($)"
                   name="price"
@@ -239,13 +281,36 @@ export const Sell = () => {
                   value={formData.stock}
                   onChange={handleChange}
                 />
-                <Input
-                  label="Cover Image URL"
-                  name="image"
-                  value={formData.image}
-                  onChange={handleChange}
-                  placeholder="https://..."
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-semibold text-[var(--color-brand-brown)]">
+                  Book Cover Image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="block w-full rounded-xl border-2 border-dashed border-gray-200 bg-white px-4 py-3 text-sm text-[var(--color-brand-brown)] file:mr-4 file:rounded-lg file:border-0 file:bg-[var(--color-brand-dark-blue)] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-gray-400"
                 />
+                <p className="text-xs text-gray-500">
+                  The image will be uploaded to Cloudinary folder `rebook/books`
+                  when you submit the listing.
+                </p>
+                {selectedImageName && (
+                  <p className="text-sm font-medium text-[var(--color-brand-dark-blue)]">
+                    Selected: {selectedImageName}
+                  </p>
+                )}
+                {formData.image && (
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                    <img
+                      src={formData.image}
+                      alt="Selected cover preview"
+                      className="h-56 w-auto rounded-xl object-contain mx-auto"
+                    />
+                  </div>
+                )}
               </div>
 
               <Textarea
@@ -273,9 +338,8 @@ export const Sell = () => {
                   <h3 className="font-bold text-emerald-900">Approval flow</h3>
                 </div>
                 <p className="text-sm text-emerald-800">
-                  Used books start as <strong>pending</strong>. Admins review
-                  the condition, category, and notes before publishing the
-                  listing.
+                  Used books start as <strong>pending</strong>. Admins review the
+                  condition, category, and notes before publishing the listing.
                 </p>
               </div>
 
@@ -294,9 +358,7 @@ export const Sell = () => {
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
                 <div className="flex items-center gap-3 mb-3">
                   <Store className="w-5 h-5 text-slate-700" />
-                  <h3 className="font-bold text-slate-900">
-                    What happens next
-                  </h3>
+                  <h3 className="font-bold text-slate-900">What happens next</h3>
                 </div>
                 <p className="text-sm text-slate-600">
                   Once approved, buyers can add your listing to cart, check out,
